@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Rust
+/agent/target/
+
+# eBPF build artifacts
+/agent/bpf/*.o
+
+# Runtime data
+/manager/data/*.db
+/manager/data/*.db-*
+/manager/data/*.sqlite
+
+# Logs
+*.log

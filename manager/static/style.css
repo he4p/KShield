@@ -1,0 +1,159 @@
+:root {
+  --bg: #f6f8f4;
+  --panel: #ffffff;
+  --ink: #1d2d25;
+  --muted: #5f6f66;
+  --line: #d9e1db;
+  --brand: #165a3d;
+  --brand-2: #0d7a63;
+  --danger: #8a2f2f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 15% 0%, #ddebe2 0, rgba(221, 235, 226, 0) 40%),
+    linear-gradient(180deg, #f0f5f1 0%, var(--bg) 50%, #eef3ef 100%);
+}
+
+.shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.2rem;
+}
+
+.hero {
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #fff;
+  padding: 1.2rem;
+  border-radius: 14px;
+  box-shadow: 0 12px 26px rgba(17, 51, 34, 0.18);
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  letter-spacing: 0.04em;
+}
+
+.hero p {
+  margin: 0.4rem 0 0;
+  opacity: 0.92;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.9rem;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.card p {
+  margin: 0.4rem 0 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.panel {
+  margin-top: 1rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.9rem;
+}
+
+.panel h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1rem;
+}
+
+form {
+  display: flex;
+  gap: 0.6rem;
+}
+
+input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.6rem;
+  background: #fdfefd;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--brand);
+  padding: 0.6rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#policy-list {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pill {
+  background: #eff4f1;
+  border: 1px solid #cdd9d1;
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.82rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 0.45rem;
+  white-space: nowrap;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.action-block {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .hero h1 {
+    font-size: 1.4rem;
+  }
+}
