@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import pathlib
 import shlex
 import subprocess
@@ -15,7 +16,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--host", required=True, help="remote IP or hostname")
     parser.add_argument("--port", type=int, default=22)
     parser.add_argument("--user", required=True)
-    parser.add_argument("--password", required=True)
+    parser.add_argument(
+        "--password",
+        default="",
+        help="SSH password. If omitted, the script prompts for it.",
+    )
     parser.add_argument("--manager-url", required=True, help="e.g. http://192.168.122.1:8080")
     parser.add_argument(
         "--remote-dir",
@@ -29,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sudo-password",
         default="",
-        help="password used for sudo on remote VM (defaults to --password)",
+        help="sudo password used on remote VM (defaults to the SSH password)",
     )
     return parser.parse_args()
 
@@ -55,7 +60,10 @@ def run_remote(ssh: paramiko.SSHClient, cmd: str) -> tuple[int, str, str]:
 
 def main() -> int:
     args = parse_args()
-    sudo_password = args.sudo_password or args.password
+    ssh_password = args.password or getpass.getpass(
+        f"SSH password for {args.user}@{args.host}: "
+    )
+    sudo_password = args.sudo_password or ssh_password
     project_root = pathlib.Path(args.project_root).resolve()
 
     print("building agent locally...")
@@ -68,7 +76,7 @@ def main() -> int:
         hostname=args.host,
         port=args.port,
         username=args.user,
-        password=args.password,
+        password=ssh_password,
         timeout=15,
         look_for_keys=False,
         allow_agent=False,

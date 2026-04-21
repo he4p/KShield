@@ -10,4 +10,4 @@ agent:
 	bash scripts/build_agent.sh
 
 deploy-deps:
-	printf 'hitler\n' | sudo -S pacman -S --noconfirm python-paramiko
+	sudo pacman -S --noconfirm python-paramiko

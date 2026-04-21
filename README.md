@@ -19,7 +19,7 @@ KShield is a manager/agent platform inspired by the Elastic/Kibana + Agent model
 ## Quick Start (Host)
 
 ```bash
-cd /home/hitler/Study/project
+cd <project-root>
 bash scripts/start_manager.sh
 ```
 
@@ -28,7 +28,7 @@ Open: `http://127.0.0.1:8080`
 ## Build Agent
 
 ```bash
-cd /home/hitler/Study/project
+cd <project-root>
 bash scripts/build_agent.sh
 ```
 
@@ -45,7 +45,7 @@ sudo ./agent/target/release/kshield-agent \
 Install deploy dependency (Arch Linux):
 
 ```bash
-printf 'hitler\n' | sudo -S pacman -S --noconfirm python-paramiko
+sudo pacman -S --noconfirm python-paramiko
 ```
 
 Deploy:
@@ -53,10 +53,12 @@ Deploy:
 ```bash
 python3 deploy/deploy_agent.py \
   --host 192.168.122.27 \
-  --user hitler \
-  --password hitler \
+  --user he4p \
   --manager-url http://<HOST_IP>:8080
 ```
+
+The deploy script prompts for the SSH password if `--password` is omitted. If the remote sudo password
+differs from the SSH password, pass it with `--sudo-password`.
 
 If deployment fails with connection refused on port 22, enable SSH server inside the VM first:
 
