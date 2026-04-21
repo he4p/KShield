@@ -67,5 +67,8 @@ sudo systemctl enable --now sshd
 ## Notes
 
 - LSM eBPF requires kernel support: `CONFIG_BPF_LSM=y` and BTF enabled.
+- On Ubuntu VMs, the boot LSM order must include `bpf`. Example GRUB setting:
+  `GRUB_CMDLINE_LINUX_DEFAULT="quiet splash lsm=lockdown,capability,landlock,yama,apparmor,bpf"`
 - Agent must run as root to load and attach eBPF programs.
 - Policy map currently supports IPv4 destination blocks.
+- A sample VM service unit is provided at `deploy/kshield-agent.service`.

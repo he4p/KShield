@@ -105,6 +105,11 @@ int BPF_PROG(enforce_socket_connect, struct socket *sock, struct sockaddr *addre
 
     blocked = bpf_map_lookup_elem(&BLOCKED_IPV4, &s4.sin_addr_s_addr);
     if (!blocked) {
+        struct event_t evt = {};
+        fill_common(&evt, EVENT_KIND_CONNECT, EVENT_ACTION_ALLOW);
+        evt.ipv4_be = s4.sin_addr_s_addr;
+        evt.port_be = s4.sin_port;
+        bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
         return 0;
     }
 

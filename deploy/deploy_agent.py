@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import pathlib
+import shlex
 import subprocess
 import sys
 
@@ -24,6 +25,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--project-root",
         default=str(pathlib.Path(__file__).resolve().parent.parent),
+    )
+    parser.add_argument(
+        "--sudo-password",
+        default="",
+        help="password used for sudo on remote VM (defaults to --password)",
     )
     return parser.parse_args()
 
@@ -49,6 +55,7 @@ def run_remote(ssh: paramiko.SSHClient, cmd: str) -> tuple[int, str, str]:
 
 def main() -> int:
     args = parse_args()
+    sudo_password = args.sudo_password or args.password
     project_root = pathlib.Path(args.project_root).resolve()
 
     print("building agent locally...")
@@ -67,10 +74,18 @@ def main() -> int:
         allow_agent=False,
     )
 
-    remote_dir = args.remote_dir
-    code, _, err = run_remote(ssh, f"mkdir -p {remote_dir}")
+    requested_remote_dir = args.remote_dir
+    quoted_remote_dir = shlex.quote(requested_remote_dir)
+    code, out, err = run_remote(
+        ssh,
+        f"bash -lc 'mkdir -p {quoted_remote_dir} && cd {quoted_remote_dir} && pwd'",
+    )
     if code != 0:
         print(err, file=sys.stderr)
+        return 1
+    remote_dir = out.strip()
+    if not remote_dir:
+        print("could not resolve remote directory", file=sys.stderr)
         return 1
 
     sftp = ssh.open_sftp()
@@ -78,25 +93,36 @@ def main() -> int:
     sftp.put(str(bpf_obj), f"{remote_dir}/kshield.bpf.o")
     sftp.close()
 
-    run_remote(ssh, f"chmod +x {remote_dir}/kshield-agent")
-    run_remote(ssh, f"pkill -f '{remote_dir}/kshield-agent' || true")
+    run_remote(ssh, f"chmod +x {shlex.quote(remote_dir)}/kshield-agent")
 
-    start_cmd = (
-        f"nohup {remote_dir}/kshield-agent "
-        f"--manager-url {args.manager_url} "
-        f"--bpf-object {remote_dir}/kshield.bpf.o "
-        f"> {remote_dir}/agent.log 2>&1 &"
+    agent_cmd = (
+        f"{shlex.quote(remote_dir)}/kshield-agent "
+        f"--manager-url {shlex.quote(args.manager_url)} "
+        f"--bpf-object {shlex.quote(remote_dir)}/kshield.bpf.o"
     )
+    escaped_sudo_password = sudo_password.replace("'", "'\"'\"'")
+    remote_script = f"""
+set -e
+pkill -f '{remote_dir}/kshield-agent' || true
+if sudo -n true >/dev/null 2>&1; then
+  nohup sudo {agent_cmd} > {shlex.quote(remote_dir)}/agent.log 2>&1 &
+else
+  nohup bash -lc "printf '%s\\n' '{escaped_sudo_password}' | sudo -S {agent_cmd}" > {shlex.quote(remote_dir)}/agent.log 2>&1 &
+fi
+sleep 1
+ps aux | grep kshield-agent | grep -v grep || true
+tail -n 40 {shlex.quote(remote_dir)}/agent.log || true
+"""
+    start_cmd = f"bash -lc {shlex.quote(remote_script)}"
     code, out, err = run_remote(ssh, start_cmd)
     if code != 0:
         print(out)
         print(err, file=sys.stderr)
         return 1
-
-    code, out, err = run_remote(ssh, f"ps aux | grep kshield-agent | grep -v grep")
-    print(out)
-    if code != 0:
-        print(err, file=sys.stderr)
+    if out.strip():
+        print(out.strip())
+    if err.strip():
+        print(err.strip(), file=sys.stderr)
     print("deployment finished")
     ssh.close()
     return 0
