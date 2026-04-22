@@ -1,0 +1,10 @@
+id = "blocked-bind-port"
+name = "Blocked Bind Port"
+description = "Highlights bind attempts denied by port policy."
+severity = "critical"
+tags = ["network", "ips", "bind-shell"]
+summary_template = "{comm} was blocked from binding port {dst_port}"
+
+[match]
+event_types = ["socket_bind"]
+actions = ["block"]

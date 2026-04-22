@@ -1,0 +1,10 @@
+id = "proc-kcore-read"
+name = "Kernel Memory Recon"
+description = "Flags reads of /proc/kcore which often indicate kernel memory reconnaissance."
+severity = "critical"
+tags = ["discovery", "kernel-memory"]
+summary_template = "{comm} opened {subject}"
+
+[match]
+event_types = ["file_open"]
+subject_prefixes = ["/proc/kcore"]

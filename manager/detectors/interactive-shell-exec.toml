@@ -1,0 +1,10 @@
+id = "interactive-shell-exec"
+name = "Interactive Shell Execution"
+description = "Flags execution of common interactive shells."
+severity = "info"
+tags = ["execution", "shell"]
+summary_template = "{comm} executed {subject}"
+
+[match]
+event_types = ["execve"]
+comm_in = ["bash", "sh", "dash", "zsh", "fish"]

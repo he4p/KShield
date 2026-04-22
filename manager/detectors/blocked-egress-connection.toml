@@ -1,0 +1,10 @@
+id = "blocked-egress-connection"
+name = "Blocked Egress Connection"
+description = "Highlights outbound network connections blocked by policy."
+severity = "critical"
+tags = ["network", "ips"]
+summary_template = "{comm} was blocked from reaching {dst_ip}:{dst_port}"
+
+[match]
+event_types = ["socket_connect"]
+actions = ["block"]

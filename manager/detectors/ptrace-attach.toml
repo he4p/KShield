@@ -1,0 +1,9 @@
+id = "ptrace-attach"
+name = "Ptrace Attach Attempt"
+description = "Flags ptrace activity that can indicate live process tampering or debugging."
+severity = "warning"
+tags = ["defense-evasion", "process-injection"]
+summary_template = "{comm} issued ptrace request {arg0} against pid {arg1}"
+
+[match]
+event_types = ["ptrace"]

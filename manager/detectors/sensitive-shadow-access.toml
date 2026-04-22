@@ -1,0 +1,10 @@
+id = "sensitive-shadow-access"
+name = "Sensitive Shadow Access"
+description = "Flags access attempts against /etc/shadow."
+severity = "critical"
+tags = ["credential-access", "filesystem"]
+summary_template = "{comm} accessed {subject}"
+
+[match]
+event_types = ["file_open"]
+subject_prefixes = ["/etc/shadow"]

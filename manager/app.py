@@ -6,8 +6,9 @@ import json
 import os
 import sqlite3
 import threading
+import tomllib
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,21 +21,195 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def as_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def as_str(value: Any, default: str = "") -> str:
+    if value is None:
+        return default
+    return str(value)
+
+
+def as_list(value: Any) -> list[Any]:
+    return list(value) if isinstance(value, list) else []
+
+
+def stable_event_ts(value: Any) -> str:
+    text = as_str(value).strip()
+    return text or now_iso()
+
+
+class SafeFormatMap(dict[str, Any]):
+    def __missing__(self, key: str) -> str:
+        return ""
+
+
 @dataclass
 class Config:
     host: str
     port: int
     db_path: Path
     static_dir: Path
+    detector_dir: Path
+
+
+@dataclass
+class Detector:
+    id: str
+    name: str
+    description: str
+    severity: str
+    tags: list[str] = field(default_factory=list)
+    event_types: list[str] = field(default_factory=list)
+    actions: list[str] = field(default_factory=list)
+    comm_in: list[str] = field(default_factory=list)
+    comm_prefixes: list[str] = field(default_factory=list)
+    subject_prefixes: list[str] = field(default_factory=list)
+    subject_contains: list[str] = field(default_factory=list)
+    dst_ports: list[int] = field(default_factory=list)
+    dst_ips: list[str] = field(default_factory=list)
+    uids: list[int] = field(default_factory=list)
+    arg0_in: list[int] = field(default_factory=list)
+    arg1_in: list[int] = field(default_factory=list)
+    summary_template: str = ""
+    source_file: str = ""
+
+    @classmethod
+    def from_toml(cls, path: Path, payload: dict[str, Any]) -> "Detector":
+        match = payload.get("match", {}) if isinstance(payload.get("match"), dict) else {}
+        detector_id = as_str(payload.get("id"), path.stem).strip() or path.stem
+        name = as_str(payload.get("name"), detector_id).strip() or detector_id
+        description = as_str(payload.get("description"), "").strip()
+        severity = as_str(payload.get("severity"), "warning").strip().lower() or "warning"
+        return cls(
+            id=detector_id,
+            name=name,
+            description=description,
+            severity=severity,
+            tags=[as_str(v).strip() for v in as_list(payload.get("tags")) if as_str(v).strip()],
+            event_types=[as_str(v).strip().lower() for v in as_list(match.get("event_types")) if as_str(v).strip()],
+            actions=[as_str(v).strip().lower() for v in as_list(match.get("actions")) if as_str(v).strip()],
+            comm_in=[as_str(v).strip().lower() for v in as_list(match.get("comm_in")) if as_str(v).strip()],
+            comm_prefixes=[as_str(v).strip().lower() for v in as_list(match.get("comm_prefixes")) if as_str(v).strip()],
+            subject_prefixes=[as_str(v).strip().lower() for v in as_list(match.get("subject_prefixes")) if as_str(v).strip()],
+            subject_contains=[as_str(v).strip().lower() for v in as_list(match.get("subject_contains")) if as_str(v).strip()],
+            dst_ports=[as_int(v) for v in as_list(match.get("dst_ports"))],
+            dst_ips=[as_str(v).strip() for v in as_list(match.get("dst_ips")) if as_str(v).strip()],
+            uids=[as_int(v) for v in as_list(match.get("uids"))],
+            arg0_in=[as_int(v) for v in as_list(match.get("arg0_in"))],
+            arg1_in=[as_int(v) for v in as_list(match.get("arg1_in"))],
+            summary_template=as_str(payload.get("summary_template"), "").strip(),
+            source_file=path.name,
+        )
+
+    def matches(self, event: dict[str, Any]) -> bool:
+        event_type = as_str(event.get("event_type")).lower()
+        action = as_str(event.get("action")).lower()
+        comm = as_str(event.get("comm")).lower()
+        subject = as_str(event.get("subject")).lower()
+        dst_ip = as_str(event.get("dst_ip"))
+        dst_port = as_int(event.get("dst_port"))
+        uid = as_int(event.get("uid"))
+        arg0 = as_int(event.get("arg0"))
+        arg1 = as_int(event.get("arg1"))
+
+        if self.event_types and event_type not in self.event_types:
+            return False
+        if self.actions and action not in self.actions:
+            return False
+        if self.comm_in and comm not in self.comm_in:
+            return False
+        if self.comm_prefixes and not any(comm.startswith(prefix) for prefix in self.comm_prefixes):
+            return False
+        if self.subject_prefixes and not any(subject.startswith(prefix) for prefix in self.subject_prefixes):
+            return False
+        if self.subject_contains and not any(fragment in subject for fragment in self.subject_contains):
+            return False
+        if self.dst_ports and dst_port not in self.dst_ports:
+            return False
+        if self.dst_ips and dst_ip not in self.dst_ips:
+            return False
+        if self.uids and uid not in self.uids:
+            return False
+        if self.arg0_in and arg0 not in self.arg0_in:
+            return False
+        if self.arg1_in and arg1 not in self.arg1_in:
+            return False
+        return True
+
+    def summary_for(self, event: dict[str, Any]) -> str:
+        if self.summary_template:
+            return self.summary_template.format_map(
+                SafeFormatMap({key: as_str(value) for key, value in event.items()})
+            )
+        if self.description:
+            return self.description
+        subject = as_str(event.get("subject")).strip()
+        if subject:
+            return f"{self.name}: {subject}"
+        return self.name
+
+
+class DetectorCatalog:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.path.mkdir(parents=True, exist_ok=True)
+        self.lock = threading.Lock()
+        self._stamp: tuple[tuple[str, int, int], ...] = ()
+        self._detectors: list[Detector] = []
+
+    def _snapshot(self) -> tuple[tuple[str, int, int], ...]:
+        files = []
+        for entry in sorted(self.path.glob("*.toml")):
+            stat = entry.stat()
+            files.append((entry.name, stat.st_mtime_ns, stat.st_size))
+        return tuple(files)
+
+    def refresh(self) -> None:
+        with self.lock:
+            stamp = self._snapshot()
+            if stamp == self._stamp:
+                return
+
+            detectors: list[Detector] = []
+            for name, _, _ in stamp:
+                path = self.path / name
+                try:
+                    data = tomllib.loads(path.read_text(encoding="utf-8"))
+                    detector = Detector.from_toml(path, data)
+                    detectors.append(detector)
+                except Exception as exc:  # noqa: BLE001
+                    print(f"detector load error for {path.name}: {exc}")
+
+            self._detectors = detectors
+            self._stamp = stamp
+
+    def list(self) -> list[Detector]:
+        self.refresh()
+        with self.lock:
+            return list(self._detectors)
 
 
 class Storage:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, detectors: DetectorCatalog) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.lock = threading.Lock()
+        self.detectors = detectors
         self._init_schema()
+
+    def _ensure_column(self, table: str, column: str, definition: str) -> None:
+        existing = {
+            str(row["name"])
+            for row in self.conn.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        if column not in existing:
+            self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
     def _init_schema(self) -> None:
         with self.lock, self.conn:
@@ -63,6 +238,9 @@ class Storage:
                     comm TEXT NOT NULL DEFAULT '',
                     dst_ip TEXT NOT NULL DEFAULT '',
                     dst_port INTEGER NOT NULL DEFAULT 0,
+                    subject TEXT NOT NULL DEFAULT '',
+                    arg0 INTEGER NOT NULL DEFAULT 0,
+                    arg1 INTEGER NOT NULL DEFAULT 0,
                     raw_json TEXT NOT NULL DEFAULT '{}',
                     FOREIGN KEY(agent_id) REFERENCES agents(id)
                 );
@@ -70,20 +248,50 @@ class Storage:
                 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts DESC);
                 CREATE INDEX IF NOT EXISTS idx_events_agent ON events(agent_id);
 
+                CREATE TABLE IF NOT EXISTS detections (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    detector_id TEXT NOT NULL,
+                    detector_name TEXT NOT NULL,
+                    severity TEXT NOT NULL,
+                    ts TEXT NOT NULL,
+                    event_id INTEGER NOT NULL,
+                    agent_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    subject TEXT NOT NULL DEFAULT '',
+                    summary TEXT NOT NULL DEFAULT '',
+                    raw_json TEXT NOT NULL DEFAULT '{}',
+                    FOREIGN KEY(event_id) REFERENCES events(id),
+                    FOREIGN KEY(agent_id) REFERENCES agents(id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_detections_ts ON detections(ts DESC);
+                CREATE INDEX IF NOT EXISTS idx_detections_detector ON detections(detector_id);
+
                 CREATE TABLE IF NOT EXISTS blocked_ipv4 (
                     ip TEXT PRIMARY KEY,
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS blocked_bind_ports (
+                    port INTEGER PRIMARY KEY,
                     enabled INTEGER NOT NULL DEFAULT 1,
                     updated_at TEXT NOT NULL
                 );
                 """
             )
 
+            self._ensure_column("events", "subject", "TEXT NOT NULL DEFAULT ''")
+            self._ensure_column("events", "arg0", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column("events", "arg1", "INTEGER NOT NULL DEFAULT 0")
+
     def register_agent(self, payload: dict[str, Any]) -> str:
-        hostname = str(payload.get("hostname", "unknown"))
-        ip = str(payload.get("ip", "unknown"))
-        kernel = str(payload.get("kernel", ""))
-        version = str(payload.get("version", ""))
-        agent_id = str(payload.get("agent_id", "")).strip() or str(uuid.uuid4())
+        hostname = as_str(payload.get("hostname"), "unknown")
+        ip = as_str(payload.get("ip"), "unknown")
+        kernel = as_str(payload.get("kernel"))
+        version = as_str(payload.get("version"))
+        agent_id = as_str(payload.get("agent_id")).strip() or str(uuid.uuid4())
         ts = now_iso()
 
         with self.lock, self.conn:
@@ -133,42 +341,103 @@ class Storage:
     def insert_events(self, events: list[dict[str, Any]]) -> int:
         if not events:
             return 0
+
+        loaded_detectors = self.detectors.list()
+        written = 0
         with self.lock, self.conn:
             for evt in events:
-                agent_id = str(evt.get("agent_id", ""))
+                agent_id = as_str(evt.get("agent_id")).strip()
                 if not agent_id:
                     continue
-                self.conn.execute(
+
+                normalized = {
+                    "agent_id": agent_id,
+                    "ts": stable_event_ts(evt.get("ts")),
+                    "event_type": as_str(evt.get("event_type"), "unknown"),
+                    "action": as_str(evt.get("action"), "observe"),
+                    "severity": as_str(evt.get("severity"), "info"),
+                    "pid": as_int(evt.get("pid")),
+                    "uid": as_int(evt.get("uid")),
+                    "comm": as_str(evt.get("comm")),
+                    "dst_ip": as_str(evt.get("dst_ip")),
+                    "dst_port": as_int(evt.get("dst_port")),
+                    "subject": as_str(evt.get("subject")),
+                    "arg0": as_int(evt.get("arg0")),
+                    "arg1": as_int(evt.get("arg1")),
+                }
+
+                cursor = self.conn.execute(
                     """
-                    INSERT INTO events(agent_id, ts, event_type, action, severity, pid, uid, comm, dst_ip, dst_port, raw_json)
-                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO events(agent_id, ts, event_type, action, severity, pid, uid, comm, dst_ip, dst_port, subject, arg0, arg1, raw_json)
+                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        agent_id,
-                        str(evt.get("ts", now_iso())),
-                        str(evt.get("event_type", "unknown")),
-                        str(evt.get("action", "observe")),
-                        str(evt.get("severity", "info")),
-                        int(evt.get("pid", 0)),
-                        int(evt.get("uid", 0)),
-                        str(evt.get("comm", "")),
-                        str(evt.get("dst_ip", "")),
-                        int(evt.get("dst_port", 0)),
+                        normalized["agent_id"],
+                        normalized["ts"],
+                        normalized["event_type"],
+                        normalized["action"],
+                        normalized["severity"],
+                        normalized["pid"],
+                        normalized["uid"],
+                        normalized["comm"],
+                        normalized["dst_ip"],
+                        normalized["dst_port"],
+                        normalized["subject"],
+                        normalized["arg0"],
+                        normalized["arg1"],
                         json.dumps(evt, ensure_ascii=True),
                     ),
                 )
+                event_id = int(cursor.lastrowid)
                 self.conn.execute(
                     "UPDATE agents SET last_seen = ?, status = 'online' WHERE id = ?",
                     (now_iso(), agent_id),
                 )
-        return len(events)
+
+                for detector in loaded_detectors:
+                    if not detector.matches(normalized):
+                        continue
+                    detection = {
+                        "detector_id": detector.id,
+                        "detector_name": detector.name,
+                        "severity": detector.severity,
+                        "ts": normalized["ts"],
+                        "event_id": event_id,
+                        "agent_id": normalized["agent_id"],
+                        "event_type": normalized["event_type"],
+                        "action": normalized["action"],
+                        "subject": normalized["subject"],
+                        "summary": detector.summary_for(normalized),
+                    }
+                    self.conn.execute(
+                        """
+                        INSERT INTO detections(detector_id, detector_name, severity, ts, event_id, agent_id, event_type, action, subject, summary, raw_json)
+                        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            detection["detector_id"],
+                            detection["detector_name"],
+                            detection["severity"],
+                            detection["ts"],
+                            detection["event_id"],
+                            detection["agent_id"],
+                            detection["event_type"],
+                            detection["action"],
+                            detection["subject"],
+                            detection["summary"],
+                            json.dumps({**normalized, **detection}, ensure_ascii=True),
+                        ),
+                    )
+
+                written += 1
+        return written
 
     def list_events(self, limit: int = 200) -> list[dict[str, Any]]:
         limit = max(1, min(limit, 2000))
         with self.lock:
             rows = self.conn.execute(
                 """
-                SELECT id, agent_id, ts, event_type, action, severity, pid, uid, comm, dst_ip, dst_port
+                SELECT id, agent_id, ts, event_type, action, severity, pid, uid, comm, dst_ip, dst_port, subject, arg0, arg1
                 FROM events
                 ORDER BY id DESC
                 LIMIT ?
@@ -177,36 +446,80 @@ class Storage:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def summary(self) -> dict[str, Any]:
+    def list_detections(self, limit: int = 200) -> list[dict[str, Any]]:
+        limit = max(1, min(limit, 2000))
         with self.lock:
-            total_events = int(
-                self.conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
-            )
-            total_agents = int(
-                self.conn.execute("SELECT COUNT(*) FROM agents").fetchone()[0]
-            )
-            blocked = int(
+            rows = self.conn.execute(
+                """
+                SELECT id, detector_id, detector_name, severity, ts, event_id, agent_id, event_type, action, subject, summary
+                FROM detections
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def list_detectors(self) -> list[dict[str, Any]]:
+        detectors = self.detectors.list()
+        with self.lock:
+            counts = {
+                str(row["detector_id"]): as_int(row["count"])
+                for row in self.conn.execute(
+                    "SELECT detector_id, COUNT(*) AS count FROM detections GROUP BY detector_id"
+                ).fetchall()
+            }
+        return [
+            {
+                "id": detector.id,
+                "name": detector.name,
+                "description": detector.description,
+                "severity": detector.severity,
+                "tags": detector.tags,
+                "source_file": detector.source_file,
+                "hit_count": counts.get(detector.id, 0),
+            }
+            for detector in detectors
+        ]
+
+    def summary(self) -> dict[str, Any]:
+        loaded_detectors = self.detectors.list()
+        with self.lock:
+            total_events = as_int(self.conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+            total_agents = as_int(self.conn.execute("SELECT COUNT(*) FROM agents").fetchone()[0])
+            blocked_events = as_int(
                 self.conn.execute(
                     "SELECT COUNT(*) FROM events WHERE action = 'block'"
                 ).fetchone()[0]
             )
+            total_detections = as_int(
+                self.conn.execute("SELECT COUNT(*) FROM detections").fetchone()[0]
+            )
             by_severity = {
-                row["severity"]: int(row["c"])
+                str(row["severity"]): as_int(row["count"])
                 for row in self.conn.execute(
-                    "SELECT severity, COUNT(*) AS c FROM events GROUP BY severity"
+                    "SELECT severity, COUNT(*) AS count FROM events GROUP BY severity"
                 ).fetchall()
             }
-            policy_count = int(
+            policy_ipv4_count = as_int(
                 self.conn.execute(
                     "SELECT COUNT(*) FROM blocked_ipv4 WHERE enabled = 1"
+                ).fetchone()[0]
+            )
+            bind_port_count = as_int(
+                self.conn.execute(
+                    "SELECT COUNT(*) FROM blocked_bind_ports WHERE enabled = 1"
                 ).fetchone()[0]
             )
         return {
             "total_events": total_events,
             "total_agents": total_agents,
-            "blocked_events": blocked,
+            "blocked_events": blocked_events,
+            "total_detections": total_detections,
+            "loaded_detectors": len(loaded_detectors),
             "severity": by_severity,
-            "blocked_ipv4_count": policy_count,
+            "blocked_ipv4_count": policy_ipv4_count,
+            "blocked_bind_port_count": bind_port_count,
         }
 
     def list_blocked_ipv4(self, enabled_only: bool = True) -> list[str]:
@@ -217,6 +530,24 @@ class Storage:
         with self.lock:
             rows = self.conn.execute(query).fetchall()
         return [str(row["ip"]) for row in rows]
+
+    def list_blocked_ipv4_entries(self) -> list[dict[str, Any]]:
+        with self.lock:
+            rows = self.conn.execute(
+                """
+                SELECT ip, enabled, updated_at
+                FROM blocked_ipv4
+                ORDER BY updated_at DESC, ip ASC
+                """
+            ).fetchall()
+        return [
+            {
+                "ip": str(row["ip"]),
+                "enabled": bool(row["enabled"]),
+                "updated_at": str(row["updated_at"]),
+            }
+            for row in rows
+        ]
 
     def set_blocked_ipv4(self, ip: str, enabled: bool) -> None:
         with self.lock, self.conn:
@@ -229,27 +560,73 @@ class Storage:
                 (ip, int(enabled), now_iso()),
             )
 
+    def delete_blocked_ipv4(self, ip: str) -> None:
+        with self.lock, self.conn:
+            self.conn.execute("DELETE FROM blocked_ipv4 WHERE ip = ?", (ip,))
+
+    def list_blocked_bind_ports(self, enabled_only: bool = True) -> list[int]:
+        query = "SELECT port FROM blocked_bind_ports"
+        if enabled_only:
+            query += " WHERE enabled = 1"
+        query += " ORDER BY port ASC"
+        with self.lock:
+            rows = self.conn.execute(query).fetchall()
+        return [as_int(row["port"]) for row in rows]
+
+    def list_blocked_bind_port_entries(self) -> list[dict[str, Any]]:
+        with self.lock:
+            rows = self.conn.execute(
+                """
+                SELECT port, enabled, updated_at
+                FROM blocked_bind_ports
+                ORDER BY updated_at DESC, port ASC
+                """
+            ).fetchall()
+        return [
+            {
+                "port": as_int(row["port"]),
+                "enabled": bool(row["enabled"]),
+                "updated_at": str(row["updated_at"]),
+            }
+            for row in rows
+        ]
+
+    def set_blocked_bind_port(self, port: int, enabled: bool) -> None:
+        with self.lock, self.conn:
+            self.conn.execute(
+                """
+                INSERT INTO blocked_bind_ports(port, enabled, updated_at)
+                VALUES(?, ?, ?)
+                ON CONFLICT(port) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at
+                """,
+                (port, int(enabled), now_iso()),
+            )
+
+    def delete_blocked_bind_port(self, port: int) -> None:
+        with self.lock, self.conn:
+            self.conn.execute("DELETE FROM blocked_bind_ports WHERE port = ?", (port,))
+
 
 class AppHandler(BaseHTTPRequestHandler):
-    server_version = "kshield-manager/0.1"
+    server_version = "kshield-manager/0.2"
 
     @property
     def app(self) -> "AppServer":
         return self.server  # type: ignore[return-value]
 
     def log_message(self, fmt: str, *args: Any) -> None:
-        # Keep logs compact and useful in terminal.
         print(f"[{now_iso()}] {self.address_string()} {fmt % args}")
 
     def _read_json(self) -> dict[str, Any]:
-        length = int(self.headers.get("Content-Length", "0"))
+        length = as_int(self.headers.get("Content-Length", "0"))
         if length <= 0:
             return {}
         body = self.rfile.read(length)
         if not body:
             return {}
         try:
-            return json.loads(body.decode("utf-8"))
+            data = json.loads(body.decode("utf-8"))
+            return data if isinstance(data, dict) else {}
         except json.JSONDecodeError:
             return {}
 
@@ -294,8 +671,15 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.OK, {"items": self.app.storage.list_agents()})
             return
         if path == "/api/v1/events":
-            limit = int(query.get("limit", ["200"])[0])
+            limit = as_int(query.get("limit", ["200"])[0], 200)
             self._json(HTTPStatus.OK, {"items": self.app.storage.list_events(limit=limit)})
+            return
+        if path == "/api/v1/detections":
+            limit = as_int(query.get("limit", ["200"])[0], 200)
+            self._json(HTTPStatus.OK, {"items": self.app.storage.list_detections(limit=limit)})
+            return
+        if path == "/api/v1/detectors":
+            self._json(HTTPStatus.OK, {"items": self.app.storage.list_detectors()})
             return
         if path == "/api/v1/metrics/summary":
             self._json(HTTPStatus.OK, self.app.storage.summary())
@@ -303,7 +687,12 @@ class AppHandler(BaseHTTPRequestHandler):
         if path == "/api/v1/policy":
             self._json(
                 HTTPStatus.OK,
-                {"blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True)},
+                {
+                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
+                    "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
+                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
+                    "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
+                },
             )
             return
         if path.startswith("/api/v1/policy/"):
@@ -311,7 +700,10 @@ class AppHandler(BaseHTTPRequestHandler):
             self.app.storage.heartbeat(agent_id)
             self._json(
                 HTTPStatus.OK,
-                {"blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True)},
+                {
+                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
+                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
+                },
             )
             return
 
@@ -327,20 +719,20 @@ class AppHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/v1/events":
-            if isinstance(payload, dict) and "events" in payload and isinstance(payload["events"], list):
-                events = payload["events"]
-            elif isinstance(payload, list):
-                events = payload
-            elif isinstance(payload, dict):
-                events = [payload]
+            events: list[dict[str, Any]]
+            raw_payload: Any = payload
+            if isinstance(raw_payload, dict) and isinstance(raw_payload.get("events"), list):
+                events = [item for item in raw_payload["events"] if isinstance(item, dict)]
+            elif isinstance(raw_payload, dict):
+                events = [raw_payload]
             else:
                 events = []
-            written = self.app.storage.insert_events(events)  # type: ignore[arg-type]
+            written = self.app.storage.insert_events(events)
             self._json(HTTPStatus.OK, {"written": written})
             return
 
         if path == "/api/v1/policy/blocked-ipv4":
-            ip = str(payload.get("ip", "")).strip()
+            ip = as_str(payload.get("ip")).strip()
             enabled = bool(payload.get("enabled", True))
             if not ip:
                 self._json(HTTPStatus.BAD_REQUEST, {"error": "ip_required"})
@@ -348,7 +740,62 @@ class AppHandler(BaseHTTPRequestHandler):
             self.app.storage.set_blocked_ipv4(ip, enabled)
             self._json(
                 HTTPStatus.OK,
-                {"blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True)},
+                {
+                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
+                    "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
+                },
+            )
+            return
+
+        if path == "/api/v1/policy/blocked-bind-port":
+            port = as_int(payload.get("port"))
+            enabled = bool(payload.get("enabled", True))
+            if port <= 0 or port > 65535:
+                self._json(HTTPStatus.BAD_REQUEST, {"error": "valid_port_required"})
+                return
+            self.app.storage.set_blocked_bind_port(port, enabled)
+            self._json(
+                HTTPStatus.OK,
+                {
+                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
+                    "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
+                },
+            )
+            return
+
+        self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+
+    def do_DELETE(self) -> None:  # noqa: N802
+        path = urlparse(self.path).path
+        payload = self._read_json()
+
+        if path == "/api/v1/policy/blocked-ipv4":
+            ip = as_str(payload.get("ip")).strip()
+            if not ip:
+                self._json(HTTPStatus.BAD_REQUEST, {"error": "ip_required"})
+                return
+            self.app.storage.delete_blocked_ipv4(ip)
+            self._json(
+                HTTPStatus.OK,
+                {
+                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
+                    "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
+                },
+            )
+            return
+
+        if path == "/api/v1/policy/blocked-bind-port":
+            port = as_int(payload.get("port"))
+            if port <= 0 or port > 65535:
+                self._json(HTTPStatus.BAD_REQUEST, {"error": "valid_port_required"})
+                return
+            self.app.storage.delete_blocked_bind_port(port)
+            self._json(
+                HTTPStatus.OK,
+                {
+                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
+                    "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
+                },
             )
             return
 
@@ -365,17 +812,18 @@ class AppServer(ThreadingHTTPServer):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Kernel Threat Detection Manager")
     parser.add_argument("--host", default=os.getenv("MANAGER_HOST", "0.0.0.0"))
-    parser.add_argument("--port", type=int, default=int(os.getenv("MANAGER_PORT", "8080")))
+    parser.add_argument("--port", type=int, default=as_int(os.getenv("MANAGER_PORT", "8080"), 8080))
     parser.add_argument(
         "--db",
         default=os.getenv("MANAGER_DB", str(Path(__file__).resolve().parent / "data" / "siem.db")),
     )
     parser.add_argument(
         "--static-dir",
-        default=os.getenv(
-            "MANAGER_STATIC",
-            str(Path(__file__).resolve().parent / "static"),
-        ),
+        default=os.getenv("MANAGER_STATIC", str(Path(__file__).resolve().parent / "static")),
+    )
+    parser.add_argument(
+        "--detector-dir",
+        default=os.getenv("MANAGER_DETECTORS", str(Path(__file__).resolve().parent / "detectors")),
     )
     return parser.parse_args()
 
@@ -387,8 +835,10 @@ def main() -> None:
         port=args.port,
         db_path=Path(args.db).resolve(),
         static_dir=Path(args.static_dir).resolve(),
+        detector_dir=Path(args.detector_dir).resolve(),
     )
-    storage = Storage(config.db_path)
+    detectors = DetectorCatalog(config.detector_dir)
+    storage = Storage(config.db_path, detectors)
     srv = AppServer(config, storage)
     print(f"manager listening on http://{config.host}:{config.port}")
     srv.serve_forever()

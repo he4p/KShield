@@ -1,4 +1,0 @@
-you will be realising a big project, its my end of studies project, its theme is kernel threat detection type of siem 
-using ebpf, and integrating ips behavior using the special lsm security ebpf, you will need to make the main program which will have the dashboard and agent management, the agent itself which will be installed on 
-the machines we want to monitor and ( kind of like elastic search and kibana and the agents, like same concept ) i have prepared a vm on this host with the following ip : 192.168.122.27, and the following ssh creds : he4p:<prompted-password>
-you can use it to deploy the agent, and you can use the host for the manager,use git for version control, good luck. also there is a project here that we started as humans you can take inspiration from it : https://www.github.com/hxuu/ataree

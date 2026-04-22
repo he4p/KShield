@@ -1,0 +1,9 @@
+id = "kernel-module-load"
+name = "Kernel Module Load Attempt"
+description = "Flags runtime kernel module loading attempts."
+severity = "warning"
+tags = ["persistence", "kernel-module"]
+summary_template = "{comm} attempted module load via {event_type}"
+
+[match]
+event_types = ["module_load"]
