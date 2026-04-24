@@ -285,6 +285,7 @@
 
             <form id="policy-form" class="policy-form">
               <input id="ip-input" type="text" placeholder="Enter IP address (e.g. 203.0.113.10)" required />
+              <input id="ip-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
               <button type="submit" class="critical-button">Block IP</button>
             </form>
 
@@ -301,10 +302,61 @@
 
             <form id="bind-policy-form" class="policy-form">
               <input id="bind-port-input" type="number" min="1" max="65535" placeholder="Enter local bind port (e.g. 4444)" required />
+              <input id="bind-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
               <button type="submit" class="critical-button">Block Port</button>
             </form>
 
             <div id="bind-policy-list" class="policy-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow critical">LSM</p>
+                <h2>Denied Exec Paths</h2>
+              </div>
+            </div>
+
+            <form id="exec-policy-form" class="policy-form">
+              <input id="exec-path-input" type="text" placeholder="Enter exact exec path (e.g. /usr/bin/nc)" required />
+              <input id="exec-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
+              <button type="submit" class="critical-button">Block Exec</button>
+            </form>
+
+            <div id="exec-policy-list" class="policy-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow critical">LSM</p>
+                <h2>Protected Write Targets</h2>
+              </div>
+            </div>
+
+            <form id="write-policy-form" class="policy-form">
+              <input id="write-target-input" type="text" placeholder="Enter basename to protect (e.g. shadow)" required />
+              <input id="write-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
+              <button type="submit" class="critical-button">Protect Target</button>
+            </form>
+
+            <div id="write-policy-list" class="policy-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow critical">LSM</p>
+                <h2>Ptrace Deny</h2>
+              </div>
+            </div>
+
+            <form id="ptrace-policy-form" class="policy-form">
+              <input id="ptrace-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
+              <button type="submit" class="critical-button">Enable Ptrace Deny</button>
+            </form>
+
+            <div id="ptrace-policy-list" class="policy-list"></div>
           </section>
         </section>
       </main>

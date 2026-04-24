@@ -8,6 +8,9 @@ const state = {
   detectors: [],
   blockedIpv4: [],
   blockedBindPorts: [],
+  blockedExecPaths: [],
+  protectedWriteTargets: [],
+  ptraceDenies: [],
   selectedDetectionId: null,
 };
 
@@ -125,6 +128,12 @@ function filterEvents(items) {
         item.subject,
         item.arg0,
         item.arg1,
+        item.ppid,
+        item.ancestry,
+        item.process_path,
+        item.pid_ns,
+        item.mount_ns,
+        item.net_ns,
       ],
       term,
     );
@@ -146,6 +155,8 @@ function filterDetections(items) {
         item.event_type,
         item.summary,
         item.subject,
+        item.match_count,
+        item.correlation_key,
       ],
       term,
     );
@@ -207,6 +218,7 @@ function renderEvents(items, detectionEventIds) {
     const severity = severityClass(evt.severity);
     const dst = evt.dst_ip ? `${evt.dst_ip}:${evt.dst_port || 0}` : "-";
     const subject = evt.subject || (evt.event_type === "ptrace" ? `request=${evt.arg0} pid=${evt.arg1}` : "-");
+    const process = evt.process_path || evt.comm || "-";
     const tr = document.createElement("tr");
     if (action === "block") tr.classList.add("blocked-row");
     if (detectionEventIds.has(evt.id)) tr.classList.add("detection-linked");
@@ -214,7 +226,7 @@ function renderEvents(items, detectionEventIds) {
       <td class="subtle">${esc(formatTs(evt.ts))}</td>
       <td class="mono">${esc(evt.agent_id)}</td>
       <td>${esc(evt.event_type)}</td>
-      <td class="mono subtle">${esc(evt.comm || "-")} (${esc(evt.pid || 0)})</td>
+      <td class="mono subtle">${esc(process)} (${esc(evt.pid || 0)})</td>
       <td class="mono subtle">${esc(subject)}</td>
       <td class="mono subtle">${esc(dst)}</td>
       <td><span class="pill ${severity}">${esc(evt.severity || "info")}</span></td>
@@ -285,13 +297,13 @@ function renderIpv4Policy(items) {
     card.innerHTML = `
       <div class="policy-item-main">
         <strong>${esc(entry.ip)}</strong>
-        <span>${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
+        <span>${entry.agent_id ? `Scoped to ${esc(entry.agent_id)}` : "Global"} • ${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
       </div>
       <div class="policy-actions">
-        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="ip" data-action="toggle" data-ip="${esc(entry.ip)}">
+        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="ip" data-action="toggle" data-ip="${esc(entry.ip)}" data-agent="${esc(entry.agent_id || "")}">
           ${entry.enabled ? "Disable" : "Enable"}
         </button>
-        <button type="button" data-scope="ip" data-action="remove" data-ip="${esc(entry.ip)}">Remove</button>
+        <button type="button" data-scope="ip" data-action="remove" data-ip="${esc(entry.ip)}" data-agent="${esc(entry.agent_id || "")}">Remove</button>
       </div>
     `;
     root.appendChild(card);
@@ -313,13 +325,97 @@ function renderBindPolicy(items) {
     card.innerHTML = `
       <div class="policy-item-main">
         <strong>tcp/${esc(entry.port)}</strong>
-        <span>${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
+        <span>${entry.agent_id ? `Scoped to ${esc(entry.agent_id)}` : "Global"} • ${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
       </div>
       <div class="policy-actions">
-        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="bind" data-action="toggle" data-port="${esc(entry.port)}">
+        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="bind" data-action="toggle" data-port="${esc(entry.port)}" data-agent="${esc(entry.agent_id || "")}">
           ${entry.enabled ? "Disable" : "Enable"}
         </button>
-        <button type="button" data-scope="bind" data-action="remove" data-port="${esc(entry.port)}">Remove</button>
+        <button type="button" data-scope="bind" data-action="remove" data-port="${esc(entry.port)}" data-agent="${esc(entry.agent_id || "")}">Remove</button>
+      </div>
+    `;
+    root.appendChild(card);
+  }
+}
+
+function renderExecPolicy(items) {
+  const root = document.getElementById("exec-policy-list");
+  root.innerHTML = "";
+
+  if (!items.length) {
+    root.appendChild(createEmptyState("No denied exec paths configured", "Add an exact executable path to block via the bprm_check_security LSM hook."));
+    return;
+  }
+
+  for (const entry of items) {
+    const card = document.createElement("div");
+    card.className = `policy-item${entry.enabled ? "" : " is-disabled"}`;
+    card.innerHTML = `
+      <div class="policy-item-main">
+        <strong>${esc(entry.path)}</strong>
+        <span>${entry.agent_id ? `Scoped to ${esc(entry.agent_id)}` : "Global"} • ${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
+      </div>
+      <div class="policy-actions">
+        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="exec" data-action="toggle" data-path="${esc(entry.path)}" data-agent="${esc(entry.agent_id || "")}">
+          ${entry.enabled ? "Disable" : "Enable"}
+        </button>
+        <button type="button" data-scope="exec" data-action="remove" data-path="${esc(entry.path)}" data-agent="${esc(entry.agent_id || "")}">Remove</button>
+      </div>
+    `;
+    root.appendChild(card);
+  }
+}
+
+function renderWritePolicy(items) {
+  const root = document.getElementById("write-policy-list");
+  root.innerHTML = "";
+
+  if (!items.length) {
+    root.appendChild(createEmptyState("No protected write targets configured", "Add a basename like shadow or sudoers to deny write attempts through the file_permission LSM hook."));
+    return;
+  }
+
+  for (const entry of items) {
+    const card = document.createElement("div");
+    card.className = `policy-item${entry.enabled ? "" : " is-disabled"}`;
+    card.innerHTML = `
+      <div class="policy-item-main">
+        <strong>${esc(entry.target)}</strong>
+        <span>${entry.agent_id ? `Scoped to ${esc(entry.agent_id)}` : "Global"} • ${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
+      </div>
+      <div class="policy-actions">
+        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="write" data-action="toggle" data-target="${esc(entry.target)}" data-agent="${esc(entry.agent_id || "")}">
+          ${entry.enabled ? "Disable" : "Enable"}
+        </button>
+        <button type="button" data-scope="write" data-action="remove" data-target="${esc(entry.target)}" data-agent="${esc(entry.agent_id || "")}">Remove</button>
+      </div>
+    `;
+    root.appendChild(card);
+  }
+}
+
+function renderPtracePolicy(items) {
+  const root = document.getElementById("ptrace-policy-list");
+  root.innerHTML = "";
+
+  if (!items.length) {
+    root.appendChild(createEmptyState("Ptrace deny is off", "Enable a global or scoped ptrace deny rule to block live process tracing and tampering."));
+    return;
+  }
+
+  for (const entry of items) {
+    const card = document.createElement("div");
+    card.className = `policy-item${entry.enabled ? "" : " is-disabled"}`;
+    card.innerHTML = `
+      <div class="policy-item-main">
+        <strong>${entry.agent_id ? esc(entry.agent_id) : "Global ptrace deny"}</strong>
+        <span>${entry.agent_id ? `Scoped to ${esc(entry.agent_id)}` : "Global"} • ${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
+      </div>
+      <div class="policy-actions">
+        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="ptrace" data-action="toggle" data-agent="${esc(entry.agent_id || "")}">
+          ${entry.enabled ? "Disable" : "Enable"}
+        </button>
+        <button type="button" data-scope="ptrace" data-action="remove" data-agent="${esc(entry.agent_id || "")}">Remove</button>
       </div>
     `;
     root.appendChild(card);
@@ -347,7 +443,7 @@ function renderDetectorCatalog(items) {
       <p>${esc(detector.description || "Custom detector")}</p>
       <div class="detector-item-meta">
         <span class="mono">${esc(detector.id)}</span>
-        <span>${formatNumber(detector.hit_count)} hits</span>
+        <span>${formatNumber(detector.hit_count)} hits${detector.threshold_count > 1 ? ` • ${esc(detector.threshold_count)}/${esc(detector.threshold_window_secs)}s` : ""}</span>
       </div>
       <div class="detector-tags">
         ${(detector.tags || []).map((tag) => `<span class="mini-tag">${esc(tag)}</span>`).join("")}
@@ -477,8 +573,8 @@ function renderSummary(summary, agents, events, detections, detectors, blockedIp
   setText("agents-meta", `${formatNumber(agents.length)} total • ${offline} offline`);
   setText("events-meta", `${scopeLabel} • ${formatNumber(summary?.total_events || 0)} stored total`);
   setText("blocked-meta", blocked ? `${blocked} blocked actions in view` : "No blocked actions in current scope");
-  setText("policy-meta", `${formatNumber(summary?.blocked_ipv4_count || 0)} active IPv4 rules`);
-  setText("bind-meta", `${formatNumber(summary?.blocked_bind_port_count || 0)} active bind blocks`);
+  setText("policy-meta", `${formatNumber(summary?.blocked_ipv4_count || 0)} IPv4 • ${formatNumber(summary?.blocked_exec_path_count || 0)} exec`);
+  setText("bind-meta", `${formatNumber(summary?.blocked_bind_port_count || 0)} bind • ${formatNumber(summary?.protected_write_target_count || 0)} write • ${formatNumber(summary?.ptrace_deny_count || 0)} ptrace`);
   setText("detections-meta", `${formatNumber(detectors.length)} detectors loaded`);
   setText("fleet-chip", `${formatNumber(agents.length)} agents`);
   setText("detector-chip", `${formatNumber(detections.length)} hits`);
@@ -517,6 +613,7 @@ function renderDetectionDrawer() {
   const action = actionClass(hit.action);
   const destination = sourceEvent?.dst_ip ? `${sourceEvent.dst_ip}:${sourceEvent.dst_port || 0}` : "-";
   const sourceSubject = sourceEvent?.subject || hit.subject || "-";
+  const process = sourceEvent?.process_path || sourceEvent?.comm || "-";
 
   backdrop.classList.remove("hidden");
   drawer.classList.remove("hidden");
@@ -528,6 +625,7 @@ function renderDetectionDrawer() {
       <span class="pill ${action}">${esc(hit.action)}</span>
       <p class="drawer-summary">${esc(hit.summary)}</p>
       <span class="drawer-copy">Detector <code>${esc(hit.detector_id)}</code> fired from ${esc(hit.event_type)} on agent <code>${esc(hit.agent_id)}</code>.</span>
+      <span class="drawer-copy">${hit.match_count > 1 ? `Threshold burst count ${esc(hit.match_count)} on key ${esc(hit.correlation_key || "-")}` : "Single-event detection"}</span>
     </section>
 
     <section class="drawer-card-grid">
@@ -566,6 +664,10 @@ function renderDetectionDrawer() {
           <span class="drawer-row-label">Subject</span>
           <span class="drawer-row-value">${esc(sourceSubject)}</span>
         </div>
+        <div class="drawer-row">
+          <span class="drawer-row-label">Match Count</span>
+          <span class="drawer-row-value">${esc(hit.match_count || 1)}</span>
+        </div>
       </div>
     </section>
 
@@ -574,7 +676,15 @@ function renderDetectionDrawer() {
       <div class="drawer-list">
         <div class="drawer-row">
           <span class="drawer-row-label">Process</span>
-          <span class="drawer-row-value">${esc(sourceEvent?.comm || "-")} (${esc(sourceEvent?.pid || 0)})</span>
+          <span class="drawer-row-value">${esc(process)} (${esc(sourceEvent?.pid || 0)})</span>
+        </div>
+        <div class="drawer-row">
+          <span class="drawer-row-label">Parent PID</span>
+          <span class="drawer-row-value">${esc(sourceEvent?.ppid || 0)}</span>
+        </div>
+        <div class="drawer-row">
+          <span class="drawer-row-label">Ancestry</span>
+          <span class="drawer-row-value">${esc(sourceEvent?.ancestry || "-")}</span>
         </div>
         <div class="drawer-row">
           <span class="drawer-row-label">UID</span>
@@ -587,6 +697,10 @@ function renderDetectionDrawer() {
         <div class="drawer-row">
           <span class="drawer-row-label">Arg0 / Arg1</span>
           <span class="drawer-row-value">${esc(sourceEvent?.arg0 || 0)} / ${esc(sourceEvent?.arg1 || 0)}</span>
+        </div>
+        <div class="drawer-row">
+          <span class="drawer-row-label">Namespaces</span>
+          <span class="drawer-row-value">${esc(sourceEvent?.pid_ns || "-")} | ${esc(sourceEvent?.mount_ns || "-")} | ${esc(sourceEvent?.net_ns || "-")}</span>
         </div>
       </div>
     </section>
@@ -615,6 +729,9 @@ function applyState() {
   renderDetectorCatalog(detectors);
   renderIpv4Policy(state.blockedIpv4);
   renderBindPolicy(state.blockedBindPorts);
+  renderExecPolicy(state.blockedExecPaths);
+  renderWritePolicy(state.protectedWriteTargets);
+  renderPtracePolicy(state.ptraceDenies);
   renderSeverity(detections.length ? detections : events);
   renderTopDetectors(state.detectors);
   renderVolume(events);
@@ -638,6 +755,9 @@ async function refresh() {
   state.detectors = detectors.items || [];
   state.blockedIpv4 = policy.blocked_ipv4_items || [];
   state.blockedBindPorts = policy.blocked_bind_port_items || [];
+  state.blockedExecPaths = policy.blocked_exec_path_items || [];
+  state.protectedWriteTargets = policy.protected_write_target_items || [];
+  state.ptraceDenies = policy.ptrace_deny_items || [];
 
   if (state.selectedDetectionId && !state.detections.some((item) => String(item.id) === String(state.selectedDetectionId))) {
     state.selectedDetectionId = null;
@@ -646,35 +766,83 @@ async function refresh() {
   applyState();
 }
 
-async function submitIpv4Policy(ip, enabled) {
+async function submitIpv4Policy(ip, enabled, agentId = "") {
   await fetchJson("/api/v1/policy/blocked-ipv4", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ip, enabled }),
+    body: JSON.stringify({ ip, enabled, agent_id: agentId }),
   });
 }
 
-async function deleteIpv4Policy(ip) {
+async function deleteIpv4Policy(ip, agentId = "") {
   await fetchJson("/api/v1/policy/blocked-ipv4", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ip }),
+    body: JSON.stringify({ ip, agent_id: agentId }),
   });
 }
 
-async function submitBindPolicy(port, enabled) {
+async function submitBindPolicy(port, enabled, agentId = "") {
   await fetchJson("/api/v1/policy/blocked-bind-port", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ port, enabled }),
+    body: JSON.stringify({ port, enabled, agent_id: agentId }),
   });
 }
 
-async function deleteBindPolicy(port) {
+async function deleteBindPolicy(port, agentId = "") {
   await fetchJson("/api/v1/policy/blocked-bind-port", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ port }),
+    body: JSON.stringify({ port, agent_id: agentId }),
+  });
+}
+
+async function submitExecPolicy(path, enabled, agentId = "") {
+  await fetchJson("/api/v1/policy/blocked-exec-path", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, enabled, agent_id: agentId }),
+  });
+}
+
+async function deleteExecPolicy(path, agentId = "") {
+  await fetchJson("/api/v1/policy/blocked-exec-path", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, agent_id: agentId }),
+  });
+}
+
+async function submitWritePolicy(target, enabled, agentId = "") {
+  await fetchJson("/api/v1/policy/protected-write-target", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ target, enabled, agent_id: agentId }),
+  });
+}
+
+async function deleteWritePolicy(target, agentId = "") {
+  await fetchJson("/api/v1/policy/protected-write-target", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ target, agent_id: agentId }),
+  });
+}
+
+async function submitPtracePolicy(enabled, agentId = "") {
+  await fetchJson("/api/v1/policy/deny-ptrace", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled, agent_id: agentId }),
+  });
+}
+
+async function deletePtracePolicy(agentId = "") {
+  await fetchJson("/api/v1/policy/deny-ptrace", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ agent_id: agentId }),
   });
 }
 
@@ -691,20 +859,61 @@ document.getElementById("time-range").addEventListener("change", (event) => {
 document.getElementById("policy-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = document.getElementById("ip-input");
+  const agentInput = document.getElementById("ip-agent-input");
   const ip = input.value.trim();
+  const agentId = agentInput.value.trim();
   if (!ip) return;
-  await submitIpv4Policy(ip, true);
+  await submitIpv4Policy(ip, true, agentId);
   input.value = "";
+  agentInput.value = "";
   await refresh();
 });
 
 document.getElementById("bind-policy-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = document.getElementById("bind-port-input");
+  const agentInput = document.getElementById("bind-agent-input");
   const port = Number(input.value);
+  const agentId = agentInput.value.trim();
   if (!port || port < 1 || port > 65535) return;
-  await submitBindPolicy(port, true);
+  await submitBindPolicy(port, true, agentId);
   input.value = "";
+  agentInput.value = "";
+  await refresh();
+});
+
+document.getElementById("exec-policy-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = document.getElementById("exec-path-input");
+  const agentInput = document.getElementById("exec-agent-input");
+  const path = input.value.trim();
+  const agentId = agentInput.value.trim();
+  if (!path) return;
+  await submitExecPolicy(path, true, agentId);
+  input.value = "";
+  agentInput.value = "";
+  await refresh();
+});
+
+document.getElementById("write-policy-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = document.getElementById("write-target-input");
+  const agentInput = document.getElementById("write-agent-input");
+  const target = input.value.trim();
+  const agentId = agentInput.value.trim();
+  if (!target) return;
+  await submitWritePolicy(target, true, agentId);
+  input.value = "";
+  agentInput.value = "";
+  await refresh();
+});
+
+document.getElementById("ptrace-policy-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const agentInput = document.getElementById("ptrace-agent-input");
+  const agentId = agentInput.value.trim();
+  await submitPtracePolicy(true, agentId);
+  agentInput.value = "";
   await refresh();
 });
 
@@ -712,19 +921,20 @@ document.getElementById("policy-list").addEventListener("click", async (event) =
   const button = event.target.closest("button[data-action]");
   if (!button) return;
   const ip = button.dataset.ip;
+  const agentId = button.dataset.agent || "";
   const action = button.dataset.action;
   if (!ip || !action) return;
 
   if (action === "toggle") {
-    const current = state.blockedIpv4.find((entry) => entry.ip === ip);
+    const current = state.blockedIpv4.find((entry) => entry.ip === ip && (entry.agent_id || "") === agentId);
     if (!current) return;
-    await submitIpv4Policy(ip, !current.enabled);
+    await submitIpv4Policy(ip, !current.enabled, agentId);
     await refresh();
     return;
   }
 
   if (action === "remove") {
-    await deleteIpv4Policy(ip);
+    await deleteIpv4Policy(ip, agentId);
     await refresh();
   }
 });
@@ -733,19 +943,85 @@ document.getElementById("bind-policy-list").addEventListener("click", async (eve
   const button = event.target.closest("button[data-action]");
   if (!button) return;
   const port = Number(button.dataset.port);
+  const agentId = button.dataset.agent || "";
   const action = button.dataset.action;
   if (!port || !action) return;
 
   if (action === "toggle") {
-    const current = state.blockedBindPorts.find((entry) => Number(entry.port) === port);
+    const current = state.blockedBindPorts.find((entry) => Number(entry.port) === port && (entry.agent_id || "") === agentId);
     if (!current) return;
-    await submitBindPolicy(port, !current.enabled);
+    await submitBindPolicy(port, !current.enabled, agentId);
     await refresh();
     return;
   }
 
   if (action === "remove") {
-    await deleteBindPolicy(port);
+    await deleteBindPolicy(port, agentId);
+    await refresh();
+  }
+});
+
+document.getElementById("exec-policy-list").addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+  const path = button.dataset.path;
+  const agentId = button.dataset.agent || "";
+  const action = button.dataset.action;
+  if (!path || !action) return;
+
+  if (action === "toggle") {
+    const current = state.blockedExecPaths.find((entry) => entry.path === path && (entry.agent_id || "") === agentId);
+    if (!current) return;
+    await submitExecPolicy(path, !current.enabled, agentId);
+    await refresh();
+    return;
+  }
+
+  if (action === "remove") {
+    await deleteExecPolicy(path, agentId);
+    await refresh();
+  }
+});
+
+document.getElementById("write-policy-list").addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+  const target = button.dataset.target;
+  const agentId = button.dataset.agent || "";
+  const action = button.dataset.action;
+  if (!target || !action) return;
+
+  if (action === "toggle") {
+    const current = state.protectedWriteTargets.find((entry) => entry.target === target && (entry.agent_id || "") === agentId);
+    if (!current) return;
+    await submitWritePolicy(target, !current.enabled, agentId);
+    await refresh();
+    return;
+  }
+
+  if (action === "remove") {
+    await deleteWritePolicy(target, agentId);
+    await refresh();
+  }
+});
+
+document.getElementById("ptrace-policy-list").addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+  const agentId = button.dataset.agent || "";
+  const action = button.dataset.action;
+  if (!action) return;
+
+  if (action === "toggle") {
+    const current = state.ptraceDenies.find((entry) => (entry.agent_id || "") === agentId);
+    if (!current) return;
+    await submitPtracePolicy(!current.enabled, agentId);
+    await refresh();
+    return;
+  }
+
+  if (action === "remove") {
+    await deletePtracePolicy(agentId);
     await refresh();
   }
 });

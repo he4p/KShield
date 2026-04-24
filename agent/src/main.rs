@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::fs;
 use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use std::thread;
@@ -6,8 +7,8 @@ use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
 use aya::maps::{HashMap, RingBuf};
-use aya::programs::{KProbe, Lsm};
-use aya::{Btf, Ebpf};
+use aya::programs::{KProbe, Lsm, TracePoint};
+use aya::{Btf, Ebpf, Pod};
 use serde::{Deserialize, Serialize};
 use ureq::Agent;
 
@@ -17,10 +18,15 @@ const EVENT_KIND_FILE_OPEN: u8 = 3;
 const EVENT_KIND_PTRACE: u8 = 4;
 const EVENT_KIND_MODULE_LOAD: u8 = 5;
 const EVENT_KIND_BIND: u8 = 6;
+const EVENT_KIND_SETUID: u8 = 7;
+const EVENT_KIND_MOUNT: u8 = 8;
+const EVENT_KIND_BPF: u8 = 9;
+const EVENT_KIND_FILE_WRITE: u8 = 10;
 
 const EVENT_ACTION_OBSERVE: u8 = 0;
 const EVENT_ACTION_ALLOW: u8 = 1;
 const EVENT_ACTION_BLOCK: u8 = 2;
+const MAX_EVENTS_PER_TICK: usize = 256;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -65,6 +71,9 @@ struct RegisterResponse {
 struct PolicyResponse {
     blocked_ipv4: Vec<String>,
     blocked_bind_ports: Vec<u16>,
+    blocked_exec_paths: Vec<String>,
+    protected_write_targets: Vec<String>,
+    deny_ptrace: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -82,6 +91,40 @@ struct EventPayload {
     subject: String,
     arg0: u64,
     arg1: u64,
+    ppid: u32,
+    ancestry: String,
+    process_path: String,
+    pid_ns: String,
+    mount_ns: String,
+    net_ns: String,
+}
+
+#[derive(Debug, Default)]
+struct ProcessContext {
+    ppid: u32,
+    ancestry: String,
+    process_path: String,
+    pid_ns: String,
+    mount_ns: String,
+    net_ns: String,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+struct StringKey {
+    value: [u8; 96],
+}
+
+unsafe impl Pod for StringKey {}
+
+impl StringKey {
+    fn from_str(input: &str) -> Self {
+        let mut value = [0_u8; 96];
+        let bytes = input.as_bytes();
+        let len = bytes.len().min(value.len().saturating_sub(1));
+        value[..len].copy_from_slice(&bytes[..len]);
+        Self { value }
+    }
 }
 
 fn parse_settings() -> Result<Settings> {
@@ -234,6 +277,9 @@ fn sync_policy(
     agent_id: &str,
     blocked_ip_map: &mut HashMap<aya::maps::MapData, u32, u8>,
     blocked_bind_map: &mut HashMap<aya::maps::MapData, u16, u8>,
+    blocked_exec_map: &mut HashMap<aya::maps::MapData, StringKey, u8>,
+    protected_write_map: &mut HashMap<aya::maps::MapData, StringKey, u8>,
+    ptrace_deny_map: &mut HashMap<aya::maps::MapData, u8, u8>,
 ) -> Result<()> {
     let url = format!("{}/api/v1/policy/{}", settings.manager_url, agent_id);
     let resp = agent.get(&url).call().context("policy request failed")?;
@@ -262,12 +308,96 @@ fn sync_policy(
     for port in policy.blocked_bind_ports {
         blocked_bind_map.insert(port, 1_u8, 0)?;
     }
+
+    let existing_exec_keys: Vec<StringKey> = blocked_exec_map.keys().filter_map(Result::ok).collect();
+    for key in existing_exec_keys {
+        let _ = blocked_exec_map.remove(&key);
+    }
+    for path in policy.blocked_exec_paths {
+        blocked_exec_map.insert(StringKey::from_str(&path), 1_u8, 0)?;
+    }
+
+    let existing_write_keys: Vec<StringKey> = protected_write_map.keys().filter_map(Result::ok).collect();
+    for key in existing_write_keys {
+        let _ = protected_write_map.remove(&key);
+    }
+    for target in policy.protected_write_targets {
+        protected_write_map.insert(StringKey::from_str(&target), 1_u8, 0)?;
+    }
+
+    let existing_ptrace_keys: Vec<u8> = ptrace_deny_map.keys().filter_map(Result::ok).collect();
+    for key in existing_ptrace_keys {
+        let _ = ptrace_deny_map.remove(&key);
+    }
+    if policy.deny_ptrace {
+        ptrace_deny_map.insert(0, 1_u8, 0)?;
+    }
     Ok(())
 }
 
 fn cstr_bytes_to_string(buf: &[u8]) -> String {
     let pos = buf.iter().position(|v| *v == 0).unwrap_or(buf.len());
     String::from_utf8_lossy(&buf[..pos]).to_string()
+}
+
+fn read_status_ppid(pid: u32) -> u32 {
+    let path = format!("/proc/{pid}/status");
+    let Ok(text) = fs::read_to_string(path) else {
+        return 0;
+    };
+    for line in text.lines() {
+        if let Some(value) = line.strip_prefix("PPid:") {
+            return value.trim().parse::<u32>().unwrap_or(0);
+        }
+    }
+    0
+}
+
+fn read_comm(pid: u32) -> String {
+    fs::read_to_string(format!("/proc/{pid}/comm"))
+        .ok()
+        .map(|value| value.trim().to_string())
+        .unwrap_or_default()
+}
+
+fn read_ns_link(pid: u32, name: &str) -> String {
+    fs::read_link(format!("/proc/{pid}/ns/{name}"))
+        .ok()
+        .map(|value| value.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+fn read_process_context(pid: u32) -> ProcessContext {
+    let ppid = read_status_ppid(pid);
+    let process_path = fs::read_link(format!("/proc/{pid}/exe"))
+        .ok()
+        .map(|value| value.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let mut ancestry = Vec::new();
+    let mut current = ppid;
+    for _ in 0..4 {
+        if current == 0 {
+            break;
+        }
+        let comm = read_comm(current);
+        if comm.is_empty() {
+            break;
+        }
+        ancestry.push(comm);
+        let next = read_status_ppid(current);
+        if next == current {
+            break;
+        }
+        current = next;
+    }
+    ProcessContext {
+        ppid,
+        ancestry: ancestry.join(" <- "),
+        process_path,
+        pid_ns: read_ns_link(pid, "pid"),
+        mount_ns: read_ns_link(pid, "mnt"),
+        net_ns: read_ns_link(pid, "net"),
+    }
 }
 
 fn convert_event(agent_id: &str, evt: &BpfEvent) -> EventPayload {
@@ -280,6 +410,12 @@ fn convert_event(agent_id: &str, evt: &BpfEvent) -> EventPayload {
         (EVENT_KIND_CONNECT, EVENT_ACTION_BLOCK) => ("socket_connect", "block", "critical"),
         (EVENT_KIND_BIND, EVENT_ACTION_ALLOW) => ("socket_bind", "allow", "info"),
         (EVENT_KIND_BIND, EVENT_ACTION_BLOCK) => ("socket_bind", "block", "critical"),
+        (EVENT_KIND_SETUID, EVENT_ACTION_OBSERVE) => ("setuid", "observe", "warning"),
+        (EVENT_KIND_MOUNT, EVENT_ACTION_OBSERVE) => ("mount", "observe", "warning"),
+        (EVENT_KIND_BPF, EVENT_ACTION_OBSERVE) => ("bpf", "observe", "warning"),
+        (EVENT_KIND_EXEC, EVENT_ACTION_BLOCK) => ("execve", "block", "critical"),
+        (EVENT_KIND_PTRACE, EVENT_ACTION_BLOCK) => ("ptrace", "block", "critical"),
+        (EVENT_KIND_FILE_WRITE, EVENT_ACTION_BLOCK) => ("file_write", "block", "critical"),
         _ => ("unknown", "observe", "info"),
     };
 
@@ -288,6 +424,7 @@ fn convert_event(agent_id: &str, evt: &BpfEvent) -> EventPayload {
     } else {
         Ipv4Addr::from(evt.ipv4_be.to_be_bytes()).to_string()
     };
+    let process = read_process_context(evt.pid);
 
     EventPayload {
         agent_id: agent_id.to_string(),
@@ -303,6 +440,12 @@ fn convert_event(agent_id: &str, evt: &BpfEvent) -> EventPayload {
         subject: cstr_bytes_to_string(&evt.subject),
         arg0: evt.arg0,
         arg1: evt.arg1,
+        ppid: process.ppid,
+        ancestry: process.ancestry,
+        process_path: process.process_path,
+        pid_ns: process.pid_ns,
+        mount_ns: process.mount_ns,
+        net_ns: process.net_ns,
     }
 }
 
@@ -310,6 +453,13 @@ fn should_forward_event(payload: &EventPayload) -> bool {
     !(payload.event_type == "socket_connect"
         && payload.action == "allow"
         && payload.comm == "kshield-agent")
+}
+
+fn should_drop_raw_event(evt: &BpfEvent) -> bool {
+    let comm = cstr_bytes_to_string(&evt.comm);
+    comm == "kshield-agent"
+        && ((evt.kind == EVENT_KIND_FILE_OPEN && evt.action == EVENT_ACTION_OBSERVE)
+            || (evt.kind == EVENT_KIND_CONNECT && evt.action == EVENT_ACTION_ALLOW))
 }
 
 fn parse_event(buf: &[u8]) -> Option<BpfEvent> {
@@ -386,6 +536,39 @@ fn load_kprobe(bpf: &mut Ebpf, name: &str, symbol: &str, required: bool) -> Resu
     }
 }
 
+fn load_tracepoint(
+    bpf: &mut Ebpf,
+    name: &str,
+    category: &str,
+    tracepoint: &str,
+    required: bool,
+) -> Result<()> {
+    let program = match bpf.program_mut(name) {
+        Some(program) => program,
+        None if required => return Err(anyhow!("program {name} not found")),
+        None => return Ok(()),
+    };
+
+    let program: &mut TracePoint = program
+        .try_into()
+        .with_context(|| format!("{name} type cast failed"))?;
+    program
+        .load()
+        .with_context(|| format!("load {name} failed"))?;
+    match program.attach(category, tracepoint) {
+        Ok(_) => {
+            println!("attached {name} -> {category}/{tracepoint}");
+            Ok(())
+        }
+        Err(err) if !required => {
+            eprintln!("optional attach skipped for {name} -> {category}/{tracepoint}: {err:#}");
+            Ok(())
+        }
+        Err(err) => Err(err)
+            .with_context(|| format!("attach {name} -> {category}/{tracepoint} failed")),
+    }
+}
+
 fn load_lsm(bpf: &mut Ebpf, name: &str, hook: &str, btf: &Btf) -> Result<()> {
     let program: &mut Lsm = bpf
         .program_mut(name)
@@ -413,9 +596,12 @@ fn main() -> Result<()> {
     let mut bpf = Ebpf::load_file(&settings.bpf_object)
         .with_context(|| format!("failed loading {}", settings.bpf_object.display()))?;
 
-    load_kprobe(&mut bpf, "observe_execve", "__x64_sys_execve", true)?;
-    load_kprobe(&mut bpf, "observe_openat", "__x64_sys_openat", true)?;
-    load_kprobe(&mut bpf, "observe_openat2", "__x64_sys_openat2", false)?;
+    load_tracepoint(&mut bpf, "observe_execve", "syscalls", "sys_enter_execve", true)?;
+    load_tracepoint(&mut bpf, "observe_openat", "syscalls", "sys_enter_openat", true)?;
+    load_tracepoint(&mut bpf, "observe_openat2", "syscalls", "sys_enter_openat2", false)?;
+    load_tracepoint(&mut bpf, "observe_setuid", "syscalls", "sys_enter_setuid", false)?;
+    load_tracepoint(&mut bpf, "observe_mount", "syscalls", "sys_enter_mount", false)?;
+    load_tracepoint(&mut bpf, "observe_bpf", "syscalls", "sys_enter_bpf", false)?;
     load_kprobe(&mut bpf, "observe_ptrace", "__x64_sys_ptrace", true)?;
     load_kprobe(&mut bpf, "observe_init_module", "__x64_sys_init_module", false)?;
     load_kprobe(&mut bpf, "observe_finit_module", "__x64_sys_finit_module", false)?;
@@ -423,6 +609,9 @@ fn main() -> Result<()> {
     let btf = Btf::from_sys_fs().context("BTF not available in /sys/kernel/btf/vmlinux")?;
     load_lsm(&mut bpf, "enforce_socket_connect", "socket_connect", &btf)?;
     load_lsm(&mut bpf, "enforce_socket_bind", "socket_bind", &btf)?;
+    load_lsm(&mut bpf, "enforce_ptrace_access", "ptrace_access_check", &btf)?;
+    load_lsm(&mut bpf, "enforce_bprm_check", "bprm_check_security", &btf)?;
+    load_lsm(&mut bpf, "enforce_file_permission", "file_permission", &btf)?;
 
     let events_map = bpf
         .take_map("EVENTS")
@@ -442,6 +631,24 @@ fn main() -> Result<()> {
     let mut blocked_bind_ports = HashMap::<_, u16, u8>::try_from(blocked_bind_map)
         .context("failed to open BLOCKED_BIND_PORTS map")?;
 
+    let blocked_exec_map = bpf
+        .take_map("BLOCKED_EXEC_PATHS")
+        .ok_or_else(|| anyhow!("BLOCKED_EXEC_PATHS map not found"))?;
+    let mut blocked_exec_paths = HashMap::<_, StringKey, u8>::try_from(blocked_exec_map)
+        .context("failed to open BLOCKED_EXEC_PATHS map")?;
+
+    let protected_write_map = bpf
+        .take_map("PROTECTED_WRITE_TARGETS")
+        .ok_or_else(|| anyhow!("PROTECTED_WRITE_TARGETS map not found"))?;
+    let mut protected_write_targets = HashMap::<_, StringKey, u8>::try_from(protected_write_map)
+        .context("failed to open PROTECTED_WRITE_TARGETS map")?;
+
+    let ptrace_deny_map = bpf
+        .take_map("DENY_PTRACE")
+        .ok_or_else(|| anyhow!("DENY_PTRACE map not found"))?;
+    let mut deny_ptrace = HashMap::<_, u8, u8>::try_from(ptrace_deny_map)
+        .context("failed to open DENY_PTRACE map")?;
+
     let mut last_policy_sync = Instant::now() - Duration::from_secs(settings.policy_sync_secs + 1);
     let mut pending_events: Vec<EventPayload> = Vec::with_capacity(128);
     loop {
@@ -452,6 +659,9 @@ fn main() -> Result<()> {
                 &agent_id,
                 &mut blocked_ipv4,
                 &mut blocked_bind_ports,
+                &mut blocked_exec_paths,
+                &mut protected_write_targets,
+                &mut deny_ptrace,
             ) {
                 eprintln!("policy sync error: {err:#}");
             }
@@ -459,10 +669,19 @@ fn main() -> Result<()> {
         }
 
         let mut consumed = false;
-        while let Some(item) = ringbuf.next() {
+        let mut drained = 0_usize;
+        while drained < MAX_EVENTS_PER_TICK {
+            let Some(item) = ringbuf.next() else {
+                break;
+            };
             let Some(evt) = parse_event(&item) else {
                 continue;
             };
+            drained += 1;
+            if should_drop_raw_event(&evt) {
+                consumed = true;
+                continue;
+            }
             let payload = convert_event(&agent_id, &evt);
             if should_forward_event(&payload) {
                 pending_events.push(payload);

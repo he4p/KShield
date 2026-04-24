@@ -1,0 +1,10 @@
+id = "blocked-sensitive-write"
+name = "Blocked Sensitive Write"
+description = "Highlights denied writes to protected targets."
+severity = "critical"
+tags = ["filesystem", "ips", "lsm"]
+summary_template = "{comm} was blocked from writing target {subject}"
+
+[match]
+event_types = ["file_write"]
+actions = ["block"]

@@ -1,0 +1,10 @@
+id = "blocked-exec-path"
+name = "Blocked Exec Path"
+description = "Highlights execution denied by selected exec path policy."
+severity = "critical"
+tags = ["execution", "ips", "lsm"]
+summary_template = "{comm} was blocked from executing {subject}"
+
+[match]
+event_types = ["execve"]
+actions = ["block"]

@@ -1,0 +1,9 @@
+id = "bpf-syscall-use"
+name = "BPF Syscall Use"
+description = "Flags direct bpf syscall use from userspace."
+severity = "warning"
+tags = ["bpf", "kernel", "tampering"]
+summary_template = "{comm} issued bpf syscall cmd {arg0}"
+
+[match]
+event_types = ["bpf"]

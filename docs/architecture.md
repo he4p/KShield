@@ -5,6 +5,7 @@
 - Runtime: Python `http.server` (`manager/app.py`)
 - Storage: SQLite (`manager/data/siem.db`)
 - Detector loading: TOML definitions from `manager/detectors/`
+- Detector authoring guide: [detectors.md](detectors.md)
 - Dashboard: static HTML/CSS/JS in `manager/static`
 - APIs:
   - `POST /api/v1/agents/register`
@@ -33,10 +34,16 @@
   - `kprobe/__x64_sys_finit_module` -> module load telemetry when available
   - `lsm/socket_connect` -> inline IPv4 destination blocking
   - `lsm/socket_bind` -> inline local bind-port blocking
+  - `lsm/ptrace_access_check` -> inline ptrace deny policy
+  - `lsm/bprm_check_security` -> inline selected exec-path blocking
+  - `lsm/file_permission` -> inline protected write-target blocking
 - Maps:
   - `EVENTS` (ringbuf): kernel -> userspace events
   - `BLOCKED_IPV4` (hash): userspace policy -> `socket_connect` enforcement
   - `BLOCKED_BIND_PORTS` (hash): userspace policy -> `socket_bind` enforcement
+  - `BLOCKED_EXEC_PATHS` (hash): userspace policy -> `bprm_check_security` enforcement
+  - `PROTECTED_WRITE_TARGETS` (hash): userspace policy -> `file_permission` enforcement
+  - `DENY_PTRACE` (hash): userspace policy -> `ptrace_access_check` enforcement
 
 ## Event Flow
 
@@ -50,11 +57,11 @@
 
 ## Policy Flow
 
-1. Operator creates or updates blocked IPv4 or blocked bind-port policy in the dashboard.
+1. Operator creates or updates policy in the dashboard.
 2. Manager persists policy in SQLite.
 3. Agent polls `/api/v1/policy/<agent_id>`.
 4. Agent rewrites the relevant eBPF policy maps.
-5. LSM hooks return `-EPERM` for blocked destinations or blocked bind ports.
+5. LSM hooks return `-EPERM` for blocked actions.
 6. The same LSM hooks still emit ring-buffer events so policy hits are visible in the UI and can trigger detectors.
 
 ## Detector Flow

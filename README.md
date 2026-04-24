@@ -18,7 +18,8 @@ The agent now captures:
 - `socket_bind` LSM allow/block events
 
 The manager evaluates incoming events against file-based detectors loaded from `manager/detectors/*.toml`
-and stores detector hits separately from the raw event stream.
+and stores detector hits separately from the raw event stream. See [Detector Authoring](docs/detectors.md)
+for adding human-maintained rules.
 
 ## Architecture
 
@@ -61,6 +62,14 @@ Supported match fields:
 - `uids`
 - `arg0_in`
 - `arg1_in`
+
+Threshold detectors are also supported with `threshold_count`, `threshold_window_secs`, and `group_by`.
+See [Detector Authoring](docs/detectors.md) for examples and testing commands.
+
+## Signature Antivirus Direction
+
+Signature-based antivirus is possible, but eBPF LSM should enforce userspace scan verdicts rather than scan
+file contents directly in kernel BPF. See [Signature Antivirus With LSM](docs/signature-av-lsm.md).
 
 ## Quick Start (Host)
 

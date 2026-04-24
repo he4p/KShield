@@ -1,0 +1,10 @@
+id = "blocked-ptrace"
+name = "Blocked Ptrace"
+description = "Highlights ptrace access denied by policy."
+severity = "critical"
+tags = ["process", "ips", "lsm"]
+summary_template = "{comm} was blocked from ptrace request {arg0} against pid {arg1}"
+
+[match]
+event_types = ["ptrace"]
+actions = ["block"]

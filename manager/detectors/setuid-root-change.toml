@@ -1,0 +1,10 @@
+id = "setuid-root-change"
+name = "Setuid To Root"
+description = "Flags attempts to change effective uid to 0."
+severity = "warning"
+tags = ["privilege-escalation", "identity"]
+summary_template = "{comm} requested setuid({arg0})"
+
+[match]
+event_types = ["setuid"]
+arg0_in = [0]

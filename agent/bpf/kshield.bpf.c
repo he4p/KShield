@@ -3,7 +3,9 @@
 #include <linux/in.h>
 #include <linux/ptrace.h>
 #include <linux/socket.h>
+#include <linux/types.h>
 #include <bpf/bpf_helpers.h>
+#include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
@@ -19,6 +21,10 @@ enum event_kind {
     EVENT_KIND_PTRACE = 4,
     EVENT_KIND_MODULE_LOAD = 5,
     EVENT_KIND_BIND = 6,
+    EVENT_KIND_SETUID = 7,
+    EVENT_KIND_MOUNT = 8,
+    EVENT_KIND_BPF = 9,
+    EVENT_KIND_FILE_WRITE = 10,
 };
 
 enum event_action {
@@ -41,6 +47,43 @@ struct event_t {
     char subject[96];
 };
 
+struct trace_event_raw_sys_enter {
+    __u16 common_type;
+    __u8 common_flags;
+    __u8 common_preempt_count;
+    __s32 common_pid;
+    __s64 id;
+    __u64 args[6];
+};
+
+struct string_key_t {
+    char value[96];
+};
+
+struct qstr___local {
+    const unsigned char *name;
+} __attribute__((preserve_access_index));
+
+struct dentry___local {
+    struct qstr___local d_name;
+} __attribute__((preserve_access_index));
+
+struct path___local {
+    struct dentry___local *dentry;
+} __attribute__((preserve_access_index));
+
+struct file___local {
+    struct path___local f_path;
+} __attribute__((preserve_access_index));
+
+struct linux_binprm___local {
+    const char *filename;
+} __attribute__((preserve_access_index));
+
+struct task_struct___local {
+    int pid;
+} __attribute__((preserve_access_index));
+
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 1 << 24);
@@ -59,6 +102,35 @@ struct {
     __type(key, __u16);
     __type(value, __u8);
 } BLOCKED_BIND_PORTS SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 256);
+    __type(key, struct string_key_t);
+    __type(value, __u8);
+} BLOCKED_EXEC_PATHS SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 256);
+    __type(key, struct string_key_t);
+    __type(value, __u8);
+} PROTECTED_WRITE_TARGETS SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 1);
+    __type(key, __u8);
+    __type(value, __u8);
+} DENY_PTRACE SEC(".maps");
+
+#ifndef MAY_WRITE
+#define MAY_WRITE 0x00000002
+#endif
+
+#ifndef MAY_APPEND
+#define MAY_APPEND 0x00000008
+#endif
 
 static __always_inline void fill_common(struct event_t *evt, __u8 kind, __u8 action)
 {
@@ -88,24 +160,86 @@ static __always_inline void submit_string_event(__u8 kind, const char *user_ptr)
     bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
 }
 
-SEC("kprobe/__x64_sys_execve")
-int BPF_KPROBE(observe_execve, const char *filename)
+static __always_inline int fill_key_from_kernel(struct string_key_t *key, const char *kernel_ptr)
 {
+    if (!kernel_ptr) {
+        return -1;
+    }
+    return bpf_probe_read_kernel_str(&key->value, sizeof(key->value), kernel_ptr) > 0 ? 0 : -1;
+}
+
+static __always_inline void copy_key_to_subject(struct event_t *evt, const struct string_key_t *key)
+{
+    __builtin_memcpy(&evt->subject, &key->value, sizeof(evt->subject));
+}
+
+static __always_inline int current_comm_is_agent(void)
+{
+    char comm[16] = {};
+
+    bpf_get_current_comm(&comm, sizeof(comm));
+    return comm[0] == 'k' && comm[1] == 's' && comm[2] == 'h' &&
+           comm[3] == 'i' && comm[4] == 'e' && comm[5] == 'l' &&
+           comm[6] == 'd' && comm[7] == '-' && comm[8] == 'a' &&
+           comm[9] == 'g' && comm[10] == 'e' && comm[11] == 'n' &&
+           comm[12] == 't' && comm[13] == '\0';
+}
+
+SEC("tracepoint/syscalls/sys_enter_execve")
+int observe_execve(struct trace_event_raw_sys_enter *ctx)
+{
+    const char *filename = (const char *)ctx->args[0];
     submit_string_event(EVENT_KIND_EXEC, filename);
     return 0;
 }
 
-SEC("kprobe/__x64_sys_openat")
-int BPF_KPROBE(observe_openat, int dfd, const char *filename)
+SEC("tracepoint/syscalls/sys_enter_openat")
+int observe_openat(struct trace_event_raw_sys_enter *ctx)
 {
+    const char *filename = (const char *)ctx->args[1];
     submit_string_event(EVENT_KIND_FILE_OPEN, filename);
     return 0;
 }
 
-SEC("kprobe/__x64_sys_openat2")
-int BPF_KPROBE(observe_openat2, int dfd, const char *filename)
+SEC("tracepoint/syscalls/sys_enter_openat2")
+int observe_openat2(struct trace_event_raw_sys_enter *ctx)
 {
+    const char *filename = (const char *)ctx->args[1];
     submit_string_event(EVENT_KIND_FILE_OPEN, filename);
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_setuid")
+int observe_setuid(struct trace_event_raw_sys_enter *ctx)
+{
+    struct event_t evt = {};
+    fill_common(&evt, EVENT_KIND_SETUID, EVENT_ACTION_OBSERVE);
+    evt.arg0 = ctx->args[0];
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_mount")
+int observe_mount(struct trace_event_raw_sys_enter *ctx)
+{
+    struct event_t evt = {};
+    fill_common(&evt, EVENT_KIND_MOUNT, EVENT_ACTION_OBSERVE);
+    evt.arg0 = ctx->args[3];
+    if (ctx->args[1]) {
+        bpf_probe_read_user_str(&evt.subject, sizeof(evt.subject), (const char *)ctx->args[1]);
+    }
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_bpf")
+int observe_bpf(struct trace_event_raw_sys_enter *ctx)
+{
+    struct event_t evt = {};
+    fill_common(&evt, EVENT_KIND_BPF, EVENT_ACTION_OBSERVE);
+    evt.arg0 = ctx->args[0];
+    evt.arg1 = ctx->args[2];
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
     return 0;
 }
 
@@ -235,6 +369,94 @@ int BPF_PROG(enforce_socket_bind, struct socket *sock, struct sockaddr *address,
     }
 
     evt.action = EVENT_ACTION_BLOCK;
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return -EPERM;
+}
+
+SEC("lsm/ptrace_access_check")
+int BPF_PROG(enforce_ptrace_access, struct task_struct *child, unsigned int mode, int ret)
+{
+    __u8 key = 0;
+    __u8 *blocked;
+    struct event_t evt = {};
+
+    if (ret != 0) {
+        return ret;
+    }
+    if (current_comm_is_agent()) {
+        return 0;
+    }
+
+    blocked = bpf_map_lookup_elem(&DENY_PTRACE, &key);
+    if (!blocked) {
+        return 0;
+    }
+
+    fill_common(&evt, EVENT_KIND_PTRACE, EVENT_ACTION_BLOCK);
+    evt.arg0 = (__u64)mode;
+    evt.arg1 = (__u64)BPF_CORE_READ((struct task_struct___local *)child, pid);
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return -EPERM;
+}
+
+SEC("lsm/bprm_check_security")
+int BPF_PROG(enforce_bprm_check, struct linux_binprm *bprm, int ret)
+{
+    const char *filename;
+    struct string_key_t key = {};
+    __u8 *blocked;
+    struct event_t evt = {};
+
+    if (ret != 0) {
+        return ret;
+    }
+
+    filename = BPF_CORE_READ((struct linux_binprm___local *)bprm, filename);
+    if (fill_key_from_kernel(&key, filename) != 0) {
+        return 0;
+    }
+
+    blocked = bpf_map_lookup_elem(&BLOCKED_EXEC_PATHS, &key);
+    if (!blocked) {
+        return 0;
+    }
+
+    fill_common(&evt, EVENT_KIND_EXEC, EVENT_ACTION_BLOCK);
+    copy_key_to_subject(&evt, &key);
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return -EPERM;
+}
+
+SEC("lsm/file_permission")
+int BPF_PROG(enforce_file_permission, struct file *file, int mask, int ret)
+{
+    struct dentry___local *dentry;
+    const unsigned char *name;
+    struct string_key_t key = {};
+    __u8 *blocked;
+    struct event_t evt = {};
+
+    if (ret != 0) {
+        return ret;
+    }
+    if (!(mask & (MAY_WRITE | MAY_APPEND))) {
+        return 0;
+    }
+
+    dentry = BPF_CORE_READ((struct file___local *)file, f_path.dentry);
+    name = BPF_CORE_READ((struct dentry___local *)dentry, d_name.name);
+    if (fill_key_from_kernel(&key, (const char *)name) != 0) {
+        return 0;
+    }
+
+    blocked = bpf_map_lookup_elem(&PROTECTED_WRITE_TARGETS, &key);
+    if (!blocked) {
+        return 0;
+    }
+
+    fill_common(&evt, EVENT_KIND_FILE_WRITE, EVENT_ACTION_BLOCK);
+    evt.arg0 = (__u64)mask;
+    copy_key_to_subject(&evt, &key);
     bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
     return -EPERM;
 }

@@ -1,0 +1,13 @@
+id = "repeated-bind-denials"
+name = "Repeated Bind Denials"
+description = "Flags repeated blocked bind attempts against the same port and process."
+severity = "critical"
+tags = ["network", "ips", "threshold"]
+threshold_count = 3
+threshold_window_secs = 120
+group_by = ["agent_id", "comm", "dst_port"]
+summary_template = "{comm} hit {match_count} blocked bind attempts on port {dst_port} within 120s"
+
+[match]
+event_types = ["socket_bind"]
+actions = ["block"]
