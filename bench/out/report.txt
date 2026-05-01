@@ -1,0 +1,10 @@
+mode=monitored manager=http://127.0.0.1:8080
+TP=10 TN=3 FP=0 FN=3 TPR=0.769 FNR=0.231 Accuracy=0.812
+avg_detection_latency_ms=853.0
+throughput_events_per_sec=2393.2
+avg_system_cpu_percent=38.63
+avg_system_mem_used_kb=9222924
+avg_manager_rss_kb=54892
+avg_agent_rss_kb=10284
+cpu_overhead_percent=2.75
+mem_overhead_kb=1801295

@@ -1,0 +1,3 @@
+mode=baseline manager=http://127.0.0.1:8080
+avg_system_cpu_percent=37.59
+avg_system_mem_used_kb=7421629

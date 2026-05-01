@@ -1,0 +1,112 @@
+{
+  "name": "kshield-default",
+  "comm_filter": "ksbench",
+  "non_policy_tests": [
+    {
+      "id": "attack_shadow_open",
+      "label": "Open /etc/shadow (read)",
+      "action": "open_shadow",
+      "expected_detectors": ["sensitive-shadow-access"]
+    },
+    {
+      "id": "attack_kcore_open",
+      "label": "Open /proc/kcore (read)",
+      "action": "open_kcore",
+      "expected_detectors": ["proc-kcore-read"]
+    },
+    {
+      "id": "attack_ptrace_attach",
+      "label": "Ptrace attach attempt",
+      "action": "ptrace_attach_child",
+      "expected_detectors": ["ptrace-attach"]
+    },
+    {
+      "id": "attack_setuid_root",
+      "label": "setuid(0) attempt",
+      "action": "setuid0",
+      "expected_detectors": ["setuid-root-change"]
+    },
+    {
+      "id": "attack_mount_attempt",
+      "label": "mount(2) attempt",
+      "action": "mount_attempt",
+      "expected_detectors": ["mount-activity"]
+    },
+    {
+      "id": "attack_bpf_syscall",
+      "label": "bpf(2) syscall attempt",
+      "action": "bpf_syscall",
+      "expected_detectors": ["bpf-syscall-use"]
+    },
+    {
+      "id": "attack_module_load_attempt",
+      "label": "init_module(2) attempt",
+      "action": "init_module_attempt",
+      "expected_detectors": ["kernel-module-load"]
+    },
+    {
+      "id": "benign_open_hosts",
+      "label": "Open /etc/hosts (read)",
+      "action": "open_hosts",
+      "expected_detectors": []
+    },
+    {
+      "id": "benign_exec_true",
+      "label": "execve(/bin/true)",
+      "action": "exec_true",
+      "expected_detectors": []
+    }
+  ],
+  "policy_profile": {
+    "blocked_ipv4": ["203.0.113.1"],
+    "blocked_bind_ports": [4444],
+    "blocked_exec_paths": ["/tmp/ksbench_blocked_exec.sh"],
+    "protected_write_targets": ["shadow"],
+    "deny_ptrace": true
+  },
+  "policy_tests": [
+    {
+      "id": "attack_blocked_connect",
+      "label": "Connect to blocked IPv4 (203.0.113.1:80)",
+      "action": "connect_blocked_ip",
+      "expected_detectors": ["blocked-egress-connection"]
+    },
+    {
+      "id": "attack_blocked_bind",
+      "label": "Bind blocked port (4444)",
+      "action": "bind_blocked_port",
+      "expected_detectors": ["blocked-bind-port"]
+    },
+    {
+      "id": "attack_repeated_bind_denials",
+      "label": "Repeated bind denials threshold",
+      "action": "bind_blocked_port_repeat3",
+      "expected_detectors": ["repeated-bind-denials"]
+    },
+    {
+      "id": "attack_blocked_exec",
+      "label": "Exec blocked path (/tmp/ksbench_blocked_exec.sh)",
+      "action": "exec_blocked_path",
+      "expected_detectors": ["blocked-exec-path"]
+    },
+    {
+      "id": "attack_blocked_write",
+      "label": "Write protected target basename (shadow)",
+      "action": "write_protected_shadow",
+      "expected_detectors": ["blocked-sensitive-write"]
+    },
+    {
+      "id": "attack_blocked_ptrace",
+      "label": "Ptrace denied by policy",
+      "action": "ptrace_attach_child",
+      "expected_detectors": ["blocked-ptrace"]
+    },
+    {
+      "id": "benign_allow_connect_localhost",
+      "label": "Connect to localhost (allow path)",
+      "action": "connect_localhost_closed",
+      "expected_detectors": []
+    }
+  ]
+}
+

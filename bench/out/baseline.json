@@ -1,0 +1,25 @@
+{
+  "avg_system_cpu_percent": 37.593037774868286,
+  "avg_system_mem_used_kb": 7421629.333333333,
+  "manager_url": "http://127.0.0.1:8080",
+  "mode": "baseline",
+  "perf_samples": [
+    {
+      "system_cpu_percent": 36.56716417910448,
+      "system_mem_used_kb": 7414644,
+      "ts_s": 1777656880.804267
+    },
+    {
+      "system_cpu_percent": 35.949367088607595,
+      "system_mem_used_kb": 7420320,
+      "ts_s": 1777656881.3045044
+    },
+    {
+      "system_cpu_percent": 40.26258205689278,
+      "system_mem_used_kb": 7429924,
+      "ts_s": 1777656881.8769104
+    }
+  ],
+  "suite": "kshield-default",
+  "ts": "2026-05-01T17:34:40.294711+00:00"
+}

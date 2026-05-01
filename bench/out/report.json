@@ -1,0 +1,475 @@
+{
+  "agent_id": "a02fbd1a-734e-4715-ac55-680c4455eed9",
+  "avg_agent_rss_kb": 10284.0,
+  "avg_manager_rss_kb": 54891.555555555555,
+  "avg_system_cpu_percent": 38.62763197055961,
+  "avg_system_mem_used_kb": 9222924.0,
+  "confusion": {
+    "Accuracy": 0.8125,
+    "FN": 3,
+    "FNR": 0.23076923076923078,
+    "FP": 0,
+    "TN": 3,
+    "TP": 10,
+    "TPR": 0.7692307692307693
+  },
+  "coverage": {
+    "attacks_detected": 10,
+    "attacks_total": 13,
+    "coverage": 0.7692307692307693
+  },
+  "cpu_overhead_percent": 2.752089899962737,
+  "detection_latency_ms_avg": 852.9892,
+  "manager_url": "http://127.0.0.1:8080",
+  "mem_overhead_kb": 1801294.666666667,
+  "mode": "monitored",
+  "perf_samples": [
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 39.01264778071161,
+      "manager_rss_kb": 54884,
+      "system_cpu_percent": 32.53301320528211,
+      "system_mem_used_kb": 9261356,
+      "ts_s": 1777657873.3154545
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 26.440977933677207,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 32.26190476190476,
+      "system_mem_used_kb": 9252720,
+      "ts_s": 1777657874.3744168
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 28.92961292950993,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 35.07917174177832,
+      "system_mem_used_kb": 9231664,
+      "ts_s": 1777657875.4114165
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 25.738022524616373,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 34.91879350348028,
+      "system_mem_used_kb": 9233584,
+      "ts_s": 1777657876.4993012
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 41.70807802741024,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 39.21568627450981,
+      "system_mem_used_kb": 9224820,
+      "ts_s": 1777657877.5302765
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 42.90534978862583,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 38.98916967509025,
+      "system_mem_used_kb": 9211288,
+      "ts_s": 1777657878.5790968
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 43.50493643024465,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 38.847117794486216,
+      "system_mem_used_kb": 9186676,
+      "ts_s": 1777657879.5904763
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 41.91478012380097,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 47.05882352941177,
+      "system_mem_used_kb": 9201976,
+      "ts_s": 1777657880.6640832
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 43.952413419454956,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 36.20283018867924,
+      "system_mem_used_kb": 9199668,
+      "ts_s": 1777657881.7334216
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 42.4382482282935,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 36.08847497089639,
+      "system_mem_used_kb": 9194000,
+      "ts_s": 1777657882.8173494
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 42.13063121490078,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 36.31090487238979,
+      "system_mem_used_kb": 9195732,
+      "ts_s": 1777657883.9091916
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 44.171768891541895,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 37.66388557806913,
+      "system_mem_used_kb": 9193924,
+      "ts_s": 1777657884.9732196
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 41.252058427831855,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 42.25181598062954,
+      "system_mem_used_kb": 9194704,
+      "ts_s": 1777657886.0155919
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 42.85513706168481,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 36.928487690504106,
+      "system_mem_used_kb": 9195688,
+      "ts_s": 1777657887.0889754
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 43.18277830815597,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 36.27329192546584,
+      "system_mem_used_kb": 9191356,
+      "ts_s": 1777657888.1079001
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 45.90924795236467,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 54.555940023068054,
+      "system_mem_used_kb": 9263248,
+      "ts_s": 1777657889.2187874
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 41.0726157544521,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 43.63636363636363,
+      "system_mem_used_kb": 9271340,
+      "ts_s": 1777657890.2657137
+    },
+    {
+      "agent_cpu_percent": 0.0,
+      "agent_rss_kb": 10284,
+      "manager_cpu_percent": 41.17612530792952,
+      "manager_rss_kb": 54892,
+      "system_cpu_percent": 36.481700118063756,
+      "system_mem_used_kb": 9308888,
+      "ts_s": 1777657891.334294
+    }
+  ],
+  "pids": {
+    "agent_pid": 2533046,
+    "manager_pid": 2532242
+  },
+  "policy_snapshot_taken": true,
+  "suite": "kshield-default",
+  "tests": [
+    {
+      "action": "open_shadow",
+      "action_rc": 1,
+      "classification": "TP",
+      "expected_detectors": [
+        "sensitive-shadow-access"
+      ],
+      "id": "attack_shadow_open",
+      "label": "Open /etc/shadow (read)",
+      "latencies_ms": [
+        1256.285
+      ],
+      "new_detections": 1,
+      "new_events": 14,
+      "observed_detectors": [
+        "sensitive-shadow-access"
+      ],
+      "ok": true
+    },
+    {
+      "action": "open_kcore",
+      "action_rc": 1,
+      "classification": "TP",
+      "expected_detectors": [
+        "proc-kcore-read"
+      ],
+      "id": "attack_kcore_open",
+      "label": "Open /proc/kcore (read)",
+      "latencies_ms": [
+        804.937
+      ],
+      "new_detections": 1,
+      "new_events": 14,
+      "observed_detectors": [
+        "proc-kcore-read"
+      ],
+      "ok": true
+    },
+    {
+      "action": "ptrace_attach_child",
+      "action_rc": 0,
+      "classification": "FN",
+      "expected_detectors": [
+        "ptrace-attach"
+      ],
+      "id": "attack_ptrace_attach",
+      "label": "Ptrace attach attempt",
+      "latencies_ms": [],
+      "new_detections": 0,
+      "new_events": 0,
+      "observed_detectors": [],
+      "ok": false
+    },
+    {
+      "action": "setuid0",
+      "action_rc": 0,
+      "classification": "TP",
+      "expected_detectors": [
+        "setuid-root-change"
+      ],
+      "id": "attack_setuid_root",
+      "label": "setuid(0) attempt",
+      "latencies_ms": [
+        885.066
+      ],
+      "new_detections": 1,
+      "new_events": 1,
+      "observed_detectors": [
+        "setuid-root-change"
+      ],
+      "ok": true
+    },
+    {
+      "action": "mount_attempt",
+      "action_rc": 0,
+      "classification": "TP",
+      "expected_detectors": [
+        "mount-activity"
+      ],
+      "id": "attack_mount_attempt",
+      "label": "mount(2) attempt",
+      "latencies_ms": [
+        243.425
+      ],
+      "new_detections": 1,
+      "new_events": 1,
+      "observed_detectors": [
+        "mount-activity"
+      ],
+      "ok": true
+    },
+    {
+      "action": "bpf_syscall",
+      "action_rc": 0,
+      "classification": "TP",
+      "expected_detectors": [
+        "bpf-syscall-use"
+      ],
+      "id": "attack_bpf_syscall",
+      "label": "bpf(2) syscall attempt",
+      "latencies_ms": [
+        935.4670000000001
+      ],
+      "new_detections": 1,
+      "new_events": 1,
+      "observed_detectors": [
+        "bpf-syscall-use"
+      ],
+      "ok": true
+    },
+    {
+      "action": "init_module_attempt",
+      "action_rc": 0,
+      "classification": "TP",
+      "expected_detectors": [
+        "kernel-module-load"
+      ],
+      "id": "attack_module_load_attempt",
+      "label": "init_module(2) attempt",
+      "latencies_ms": [
+        582.862
+      ],
+      "new_detections": 1,
+      "new_events": 1,
+      "observed_detectors": [
+        "kernel-module-load"
+      ],
+      "ok": true
+    },
+    {
+      "action": "open_hosts",
+      "action_rc": 0,
+      "classification": "TN",
+      "expected_detectors": [],
+      "id": "benign_open_hosts",
+      "label": "Open /etc/hosts (read)",
+      "latencies_ms": [],
+      "new_detections": 0,
+      "new_events": 1,
+      "observed_detectors": [],
+      "ok": true
+    },
+    {
+      "action": "exec_true",
+      "action_rc": 0,
+      "classification": "TN",
+      "expected_detectors": [],
+      "id": "benign_exec_true",
+      "label": "execve(/bin/true)",
+      "latencies_ms": [],
+      "new_detections": 0,
+      "new_events": 2,
+      "observed_detectors": [],
+      "ok": true
+    },
+    {
+      "action": "connect_blocked_ip",
+      "action_rc": 0,
+      "classification": "FN",
+      "expected_detectors": [
+        "blocked-egress-connection"
+      ],
+      "id": "attack_blocked_connect",
+      "label": "Connect to blocked IPv4 (203.0.113.1:80)",
+      "latencies_ms": [],
+      "new_detections": 0,
+      "new_events": 0,
+      "observed_detectors": [],
+      "ok": false
+    },
+    {
+      "action": "bind_blocked_port",
+      "action_rc": 0,
+      "classification": "TP",
+      "expected_detectors": [
+        "blocked-bind-port"
+      ],
+      "id": "attack_blocked_bind",
+      "label": "Bind blocked port (4444)",
+      "latencies_ms": [
+        1224.866
+      ],
+      "new_detections": 1,
+      "new_events": 1,
+      "observed_detectors": [
+        "blocked-bind-port"
+      ],
+      "ok": true
+    },
+    {
+      "action": "bind_blocked_port_repeat3",
+      "action_rc": 0,
+      "classification": "TP",
+      "expected_detectors": [
+        "repeated-bind-denials"
+      ],
+      "id": "attack_repeated_bind_denials",
+      "label": "Repeated bind denials threshold",
+      "latencies_ms": [
+        934.961
+      ],
+      "new_detections": 4,
+      "new_events": 3,
+      "observed_detectors": [
+        "blocked-bind-port",
+        "repeated-bind-denials"
+      ],
+      "ok": true
+    },
+    {
+      "action": "exec_blocked_path",
+      "action_rc": 127,
+      "classification": "TP",
+      "expected_detectors": [
+        "blocked-exec-path"
+      ],
+      "id": "attack_blocked_exec",
+      "label": "Exec blocked path (/tmp/ksbench_blocked_exec.sh)",
+      "latencies_ms": [
+        527.987
+      ],
+      "new_detections": 1,
+      "new_events": 4,
+      "observed_detectors": [
+        "blocked-exec-path"
+      ],
+      "ok": true
+    },
+    {
+      "action": "write_protected_shadow",
+      "action_rc": 1,
+      "classification": "TP",
+      "expected_detectors": [
+        "blocked-sensitive-write"
+      ],
+      "id": "attack_blocked_write",
+      "label": "Write protected target basename (shadow)",
+      "latencies_ms": [
+        1134.036
+      ],
+      "new_detections": 1,
+      "new_events": 16,
+      "observed_detectors": [
+        "blocked-sensitive-write"
+      ],
+      "ok": true
+    },
+    {
+      "action": "ptrace_attach_child",
+      "action_rc": 0,
+      "classification": "FN",
+      "expected_detectors": [
+        "blocked-ptrace"
+      ],
+      "id": "attack_blocked_ptrace",
+      "label": "Ptrace denied by policy",
+      "latencies_ms": [],
+      "new_detections": 0,
+      "new_events": 0,
+      "observed_detectors": [],
+      "ok": false
+    },
+    {
+      "action": "connect_localhost_closed",
+      "action_rc": 0,
+      "classification": "TN",
+      "expected_detectors": [],
+      "id": "benign_allow_connect_localhost",
+      "label": "Connect to localhost (allow path)",
+      "latencies_ms": [],
+      "new_detections": 0,
+      "new_events": 1,
+      "observed_detectors": [],
+      "ok": true
+    }
+  ],
+  "throughput_events_per_sec": 2393.17771637288,
+  "ts": "2026-05-01T17:50:25.738358+00:00"
+}
