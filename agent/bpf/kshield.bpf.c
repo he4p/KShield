@@ -10,6 +10,14 @@
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
+#ifndef BPF_PRESERVE_ACCESS_INDEX
+#if defined(__clang__) && __has_attribute(preserve_access_index)
+#define BPF_PRESERVE_ACCESS_INDEX __attribute__((preserve_access_index))
+#else
+#define BPF_PRESERVE_ACCESS_INDEX
+#endif
+#endif
+
 #ifndef AF_INET
 #define AF_INET 2
 #endif
@@ -25,6 +33,10 @@ enum event_kind {
     EVENT_KIND_MOUNT = 8,
     EVENT_KIND_BPF = 9,
     EVENT_KIND_FILE_WRITE = 10,
+    EVENT_KIND_MMAP = 11,
+    EVENT_KIND_MPROTECT = 12,
+    EVENT_KIND_FORK = 13,
+    EVENT_KIND_EXIT = 14,
 };
 
 enum event_action {
@@ -56,33 +68,51 @@ struct trace_event_raw_sys_enter {
     __u64 args[6];
 };
 
+struct trace_event_raw_sched_process_fork {
+    __u16 common_type;
+    __u8 common_flags;
+    __u8 common_preempt_count;
+    __s32 common_pid;
+    __u32 __data_loc_parent_comm;
+    __s32 parent_pid;
+    __u32 __data_loc_child_comm;
+    __s32 child_pid;
+};
+
+struct trace_event_raw_sched_process_template {
+    __u16 common_type;
+    __u8 common_flags;
+    __u8 common_preempt_count;
+    __s32 common_pid;
+};
+
 struct string_key_t {
     char value[96];
 };
 
 struct qstr___local {
     const unsigned char *name;
-} __attribute__((preserve_access_index));
+} BPF_PRESERVE_ACCESS_INDEX;
 
 struct dentry___local {
     struct qstr___local d_name;
-} __attribute__((preserve_access_index));
+} BPF_PRESERVE_ACCESS_INDEX;
 
 struct path___local {
     struct dentry___local *dentry;
-} __attribute__((preserve_access_index));
+} BPF_PRESERVE_ACCESS_INDEX;
 
 struct file___local {
     struct path___local f_path;
-} __attribute__((preserve_access_index));
+} BPF_PRESERVE_ACCESS_INDEX;
 
 struct linux_binprm___local {
     const char *filename;
-} __attribute__((preserve_access_index));
+} BPF_PRESERVE_ACCESS_INDEX;
 
 struct task_struct___local {
     int pid;
-} __attribute__((preserve_access_index));
+} BPF_PRESERVE_ACCESS_INDEX;
 
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
@@ -459,4 +489,45 @@ int BPF_PROG(enforce_file_permission, struct file *file, int mask, int ret)
     copy_key_to_subject(&evt, &key);
     bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
     return -EPERM;
+}
+
+SEC("tracepoint/syscalls/sys_enter_mmap")
+int observe_mmap(struct trace_event_raw_sys_enter *ctx)
+{
+    struct event_t evt = {};
+    fill_common(&evt, EVENT_KIND_MMAP, EVENT_ACTION_OBSERVE);
+    evt.arg0 = ctx->args[2];
+    evt.arg1 = ctx->args[3];
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_mprotect")
+int observe_mprotect(struct trace_event_raw_sys_enter *ctx)
+{
+    struct event_t evt = {};
+    fill_common(&evt, EVENT_KIND_MPROTECT, EVENT_ACTION_OBSERVE);
+    evt.arg0 = ctx->args[2];
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return 0;
+}
+
+SEC("tracepoint/sched/sched_process_fork")
+int observe_fork(struct trace_event_raw_sched_process_fork *ctx)
+{
+    struct event_t evt = {};
+    fill_common(&evt, EVENT_KIND_FORK, EVENT_ACTION_OBSERVE);
+    evt.arg0 = (__u64)ctx->parent_pid;
+    evt.arg1 = (__u64)ctx->child_pid;
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return 0;
+}
+
+SEC("tracepoint/sched/sched_process_exit")
+int observe_exit(struct trace_event_raw_sched_process_template *ctx)
+{
+    struct event_t evt = {};
+    fill_common(&evt, EVENT_KIND_EXIT, EVENT_ACTION_OBSERVE);
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return 0;
 }

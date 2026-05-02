@@ -22,6 +22,10 @@ const EVENT_KIND_SETUID: u8 = 7;
 const EVENT_KIND_MOUNT: u8 = 8;
 const EVENT_KIND_BPF: u8 = 9;
 const EVENT_KIND_FILE_WRITE: u8 = 10;
+const EVENT_KIND_MMAP: u8 = 11;
+const EVENT_KIND_MPROTECT: u8 = 12;
+const EVENT_KIND_FORK: u8 = 13;
+const EVENT_KIND_EXIT: u8 = 14;
 
 const EVENT_ACTION_OBSERVE: u8 = 0;
 const EVENT_ACTION_ALLOW: u8 = 1;
@@ -416,6 +420,10 @@ fn convert_event(agent_id: &str, evt: &BpfEvent) -> EventPayload {
         (EVENT_KIND_EXEC, EVENT_ACTION_BLOCK) => ("execve", "block", "critical"),
         (EVENT_KIND_PTRACE, EVENT_ACTION_BLOCK) => ("ptrace", "block", "critical"),
         (EVENT_KIND_FILE_WRITE, EVENT_ACTION_BLOCK) => ("file_write", "block", "critical"),
+        (EVENT_KIND_MMAP, EVENT_ACTION_OBSERVE) => ("mmap", "observe", "info"),
+        (EVENT_KIND_MPROTECT, EVENT_ACTION_OBSERVE) => ("mprotect", "observe", "info"),
+        (EVENT_KIND_FORK, EVENT_ACTION_OBSERVE) => ("fork", "observe", "info"),
+        (EVENT_KIND_EXIT, EVENT_ACTION_OBSERVE) => ("exit", "observe", "info"),
         _ => ("unknown", "observe", "info"),
     };
 
@@ -605,6 +613,11 @@ fn main() -> Result<()> {
     load_kprobe(&mut bpf, "observe_ptrace", "__x64_sys_ptrace", true)?;
     load_kprobe(&mut bpf, "observe_init_module", "__x64_sys_init_module", false)?;
     load_kprobe(&mut bpf, "observe_finit_module", "__x64_sys_finit_module", false)?;
+
+    load_tracepoint(&mut bpf, "observe_mmap", "syscalls", "sys_enter_mmap", false)?;
+    load_tracepoint(&mut bpf, "observe_mprotect", "syscalls", "sys_enter_mprotect", false)?;
+    load_tracepoint(&mut bpf, "observe_fork", "sched", "sched_process_fork", false)?;
+    load_tracepoint(&mut bpf, "observe_exit", "sched", "sched_process_exit", false)?;
 
     let btf = Btf::from_sys_fs().context("BTF not available in /sys/kernel/btf/vmlinux")?;
     load_lsm(&mut bpf, "enforce_socket_connect", "socket_connect", &btf)?;

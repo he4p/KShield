@@ -1,5 +1,6 @@
 const state = {
   search: "",
+  severity: "",
   rangeHours: 24,
   summary: null,
   agents: [],
@@ -114,6 +115,7 @@ function filterEvents(items) {
   const term = state.search.trim().toLowerCase();
   return items.filter((item) => {
     if (!inScope(item.ts)) return false;
+    if (state.severity && severityClass(item.severity) !== state.severity) return false;
     if (!term) return true;
     return matchesTerm(
       [
@@ -144,6 +146,7 @@ function filterDetections(items) {
   const term = state.search.trim().toLowerCase();
   return items.filter((item) => {
     if (!inScope(item.ts)) return false;
+    if (state.severity && severityClass(item.severity) !== state.severity) return false;
     if (!term) return true;
     return matchesTerm(
       [
@@ -853,6 +856,11 @@ document.getElementById("search-input").addEventListener("input", (event) => {
 
 document.getElementById("time-range").addEventListener("change", (event) => {
   state.rangeHours = Number(event.target.value || 24);
+  applyState();
+});
+
+document.getElementById("severity-filter").addEventListener("change", (event) => {
+  state.severity = event.target.value;
   applyState();
 });
 

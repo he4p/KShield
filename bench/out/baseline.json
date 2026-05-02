@@ -1,25 +1,105 @@
 {
-  "avg_system_cpu_percent": 37.593037774868286,
-  "avg_system_mem_used_kb": 7421629.333333333,
+  "avg_system_cpu_percent": 29.525881140832368,
+  "avg_system_mem_used_kb": 7734244.631578947,
   "manager_url": "http://127.0.0.1:8080",
   "mode": "baseline",
   "perf_samples": [
     {
-      "system_cpu_percent": 36.56716417910448,
-      "system_mem_used_kb": 7414644,
-      "ts_s": 1777656880.804267
+      "system_cpu_percent": 32.65792610250298,
+      "system_mem_used_kb": 7735808,
+      "ts_s": 1777673028.046142
     },
     {
-      "system_cpu_percent": 35.949367088607595,
-      "system_mem_used_kb": 7420320,
-      "ts_s": 1777656881.3045044
+      "system_cpu_percent": 37.44394618834081,
+      "system_mem_used_kb": 7738044,
+      "ts_s": 1777673029.1810272
     },
     {
-      "system_cpu_percent": 40.26258205689278,
-      "system_mem_used_kb": 7429924,
-      "ts_s": 1777656881.8769104
+      "system_cpu_percent": 39.97509339975093,
+      "system_mem_used_kb": 7743948,
+      "ts_s": 1777673030.2006044
+    },
+    {
+      "system_cpu_percent": 40.569395017793596,
+      "system_mem_used_kb": 7738324,
+      "ts_s": 1777673031.2701263
+    },
+    {
+      "system_cpu_percent": 40.64362336114422,
+      "system_mem_used_kb": 7738148,
+      "ts_s": 1777673032.3421254
+    },
+    {
+      "system_cpu_percent": 25.330132052821128,
+      "system_mem_used_kb": 7749008,
+      "ts_s": 1777673033.3979626
+    },
+    {
+      "system_cpu_percent": 26.540880503144653,
+      "system_mem_used_kb": 7743676,
+      "ts_s": 1777673034.407793
+    },
+    {
+      "system_cpu_percent": 32.71375464684015,
+      "system_mem_used_kb": 7727336,
+      "ts_s": 1777673035.4236314
+    },
+    {
+      "system_cpu_percent": 26.595744680851062,
+      "system_mem_used_kb": 7728676,
+      "ts_s": 1777673036.4888594
+    },
+    {
+      "system_cpu_percent": 26.595744680851062,
+      "system_mem_used_kb": 7723988,
+      "ts_s": 1777673037.5530272
+    },
+    {
+      "system_cpu_percent": 24.938574938574938,
+      "system_mem_used_kb": 7723536,
+      "ts_s": 1777673038.5824227
+    },
+    {
+      "system_cpu_percent": 24.81203007518797,
+      "system_mem_used_kb": 7728720,
+      "ts_s": 1777673039.5908594
+    },
+    {
+      "system_cpu_percent": 24.466750313676286,
+      "system_mem_used_kb": 7738496,
+      "ts_s": 1777673040.6080725
+    },
+    {
+      "system_cpu_percent": 25.59598494353827,
+      "system_mem_used_kb": 7723796,
+      "ts_s": 1777673041.6097865
+    },
+    {
+      "system_cpu_percent": 24.811083123425693,
+      "system_mem_used_kb": 7732132,
+      "ts_s": 1777673042.610075
+    },
+    {
+      "system_cpu_percent": 29.4811320754717,
+      "system_mem_used_kb": 7718888,
+      "ts_s": 1777673043.6755338
+    },
+    {
+      "system_cpu_percent": 25.700365408038977,
+      "system_mem_used_kb": 7746856,
+      "ts_s": 1777673044.7115886
+    },
+    {
+      "system_cpu_percent": 25.338253382533825,
+      "system_mem_used_kb": 7733212,
+      "ts_s": 1777673045.7395747
+    },
+    {
+      "system_cpu_percent": 26.781326781326783,
+      "system_mem_used_kb": 7738056,
+      "ts_s": 1777673046.7715302
     }
   ],
   "suite": "kshield-default",
-  "ts": "2026-05-01T17:34:40.294711+00:00"
+  "ts": "2026-05-01T22:03:46.973883+00:00"
 }
