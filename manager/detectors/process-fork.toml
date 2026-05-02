@@ -1,0 +1,8 @@
+id = "process-fork-tracking"
+name = "Process Fork Observed"
+description = "A process spawned a child process. This is tracked for ancestry and process tree monitoring."
+severity = "info"
+tags = ["process", "execution"]
+
+[match]
+event_types = ["fork"]

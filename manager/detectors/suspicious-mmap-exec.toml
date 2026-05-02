@@ -1,0 +1,8 @@
+id = "suspicious-mmap-exec"
+name = "Suspicious Memory Allocation (PROT_EXEC)"
+description = "A process allocated executable memory. While some JIT compilers do this, it is frequently used by malware to load shellcode."
+severity = "warning"
+tags = ["memory", "shellcode", "T1055"]
+
+[match]
+event_types = ["mmap"]

@@ -1,0 +1,8 @@
+id = "suspicious-mprotect-exec"
+name = "Suspicious Memory Protection Change (PROT_EXEC)"
+description = "A process attempted to change memory permissions to executable. This is a strong indicator of process injection, shellcode execution, or unpacking behavior."
+severity = "critical"
+tags = ["memory", "injection", "T1055"]
+
+[match]
+event_types = ["mprotect"]

@@ -494,21 +494,32 @@ int BPF_PROG(enforce_file_permission, struct file *file, int mask, int ret)
 SEC("tracepoint/syscalls/sys_enter_mmap")
 int observe_mmap(struct trace_event_raw_sys_enter *ctx)
 {
-    struct event_t evt = {};
-    fill_common(&evt, EVENT_KIND_MMAP, EVENT_ACTION_OBSERVE);
-    evt.arg0 = ctx->args[2];
-    evt.arg1 = ctx->args[3];
-    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    __u64 prot  = ctx->args[2];
+    __u64 flags = ctx->args[3];
+    
+    // Only capture anonymous executable mmaps to prevent overwhelming the agent
+    if ((flags & 0x20) && (prot & 0x4)) {
+        struct event_t evt = {};
+        fill_common(&evt, EVENT_KIND_MMAP, EVENT_ACTION_OBSERVE);
+        evt.arg0 = prot;
+        evt.arg1 = flags;
+        bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    }
     return 0;
 }
 
 SEC("tracepoint/syscalls/sys_enter_mprotect")
 int observe_mprotect(struct trace_event_raw_sys_enter *ctx)
 {
-    struct event_t evt = {};
-    fill_common(&evt, EVENT_KIND_MPROTECT, EVENT_ACTION_OBSERVE);
-    evt.arg0 = ctx->args[2];
-    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    __u64 prot = ctx->args[2];
+    
+    // Only capture executable mprotect to prevent overwhelming the agent
+    if (prot & 0x4) {
+        struct event_t evt = {};
+        fill_common(&evt, EVENT_KIND_MPROTECT, EVENT_ACTION_OBSERVE);
+        evt.arg0 = prot;
+        bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    }
     return 0;
 }
 

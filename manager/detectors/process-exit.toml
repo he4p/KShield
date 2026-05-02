@@ -1,0 +1,8 @@
+id = "process-exit-tracking"
+name = "Process Exit Observed"
+description = "A process terminated. This is tracked to update the lifecycle state of monitored processes."
+severity = "info"
+tags = ["process", "termination"]
+
+[match]
+event_types = ["exit"]
