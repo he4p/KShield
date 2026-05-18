@@ -1007,21 +1007,36 @@ class AppHandler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
     def _check_auth(self, path: str) -> bool:
-        if path == "/healthz": return True
-        if path.startswith("/api/v1/policy/") and not path.startswith("/api/v1/policy/blocked-") and not path.startswith("/api/v1/policy/protected-") and not path.startswith("/api/v1/policy/deny-"):
+        if path == "/healthz":
             return True
-        if path == "/api/v1/agents/register": return True
-        if path == "/api/v1/events" and self.command == "POST": return True
-        
+        if path == "/login":
+            return True
+        if path == "/auth.js":
+            return True
+        if path == "/api/v1/agents/register":  # ADD THIS LINE
+            return True
+
         auth = self.headers.get("Authorization")
-        if auth == "Basic YWRtaW46c2VjcmV0":  # admin:secret
-            return True
-        
-        self.send_response(HTTPStatus.UNAUTHORIZED)
-        self.send_header("WWW-Authenticate", 'Basic realm="Ataree"')
-        self.send_header("Content-Type", "application/json")
+        if auth and auth.startswith("Basic "):
+            try:
+                import base64
+                decoded = base64.b64decode(auth[6:]).decode('utf-8')
+                username, password = decoded.split(':', 1)
+                if username == "admin" and password == "secret":
+                    return True
+            except Exception:
+                pass
+
+        if path.startswith("/api/"):
+            self.send_response(HTTPStatus.UNAUTHORIZED)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"error": "unauthorized"}')
+            return False
+
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", "/login")
         self.end_headers()
-        self.wfile.write(b'{"error": "unauthorized"}')
         return False
 
     def do_GET(self) -> None:  # noqa: N802
@@ -1034,6 +1049,9 @@ class AppHandler(BaseHTTPRequestHandler):
         if path == "/healthz":
             self._json(HTTPStatus.OK, {"status": "ok", "ts": now_iso()})
             return
+        if path == "/login":
+            self._serve_file(self.app.config.static_dir / "login.html", "text/html; charset=utf-8")
+            return
         if path == "/":
             self._serve_file(self.app.config.static_dir / "index.html", "text/html; charset=utf-8")
             return
@@ -1042,6 +1060,9 @@ class AppHandler(BaseHTTPRequestHandler):
             return
         if path == "/app.js":
             self._serve_file(self.app.config.static_dir / "app.js", "application/javascript; charset=utf-8")
+            return
+        if path == "/auth.js":
+            self._serve_file(self.app.config.static_dir / "auth.js", "application/javascript; charset=utf-8")
             return
 
         if path == "/api/v1/agents":
