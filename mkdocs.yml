@@ -1,9 +1,9 @@
-site_name: Ataree
-site_description: Runtime security for Linux using eBPF
+site_name: Unified Shield
+site_description: Kernel Threat Detection and eBPF-LSM IPS Control Plane
 site_author: hxuu
 
-repo_name: hxuu/ataree
-repo_url: https://github.com/hxuu/ataree
+repo_name: hxuu/unified_shield
+repo_url: https://github.com/hxuu/unified_shield
 
 theme:
   name: material
@@ -23,6 +23,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - API Reference: api-reference.md
   - Current Detectors: current-detectors.md
   - Extensibility Guide: extensibility.md
   - Detectors Format: detectors.md
