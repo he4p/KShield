@@ -25,6 +25,8 @@ enum event_kind {
     EVENT_KIND_MOUNT = 8,
     EVENT_KIND_BPF = 9,
     EVENT_KIND_FILE_WRITE = 10,
+    EVENT_KIND_PIDFD_GETFD = 11,
+    EVENT_KIND_ESP_INPUT = 12,
 };
 
 enum event_action {
@@ -239,6 +241,28 @@ int observe_bpf(struct trace_event_raw_sys_enter *ctx)
     fill_common(&evt, EVENT_KIND_BPF, EVENT_ACTION_OBSERVE);
     evt.arg0 = ctx->args[0];
     evt.arg1 = ctx->args[2];
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_pidfd_getfd")
+int observe_pidfd_getfd(struct trace_event_raw_sys_enter *ctx)
+{
+    struct event_t evt = {};
+    fill_common(&evt, EVENT_KIND_PIDFD_GETFD, EVENT_ACTION_OBSERVE);
+    evt.arg0 = ctx->args[0];
+    evt.arg1 = ctx->args[1];
+    bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
+    return 0;
+}
+
+SEC("kprobe/esp_input")
+int BPF_KPROBE(observe_esp_input, void *x, void *skb)
+{
+    struct event_t evt = {};
+    fill_common(&evt, EVENT_KIND_ESP_INPUT, EVENT_ACTION_OBSERVE);
+    evt.arg0 = (__u64)x;
+    evt.arg1 = (__u64)skb;
     bpf_ringbuf_output(&EVENTS, &evt, sizeof(evt), 0);
     return 0;
 }

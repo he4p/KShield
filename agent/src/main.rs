@@ -22,6 +22,8 @@ const EVENT_KIND_SETUID: u8 = 7;
 const EVENT_KIND_MOUNT: u8 = 8;
 const EVENT_KIND_BPF: u8 = 9;
 const EVENT_KIND_FILE_WRITE: u8 = 10;
+const EVENT_KIND_PIDFD_GETFD: u8 = 11;
+const EVENT_KIND_ESP_INPUT: u8 = 12;
 
 const EVENT_ACTION_OBSERVE: u8 = 0;
 const EVENT_ACTION_ALLOW: u8 = 1;
@@ -416,6 +418,8 @@ fn convert_event(agent_id: &str, evt: &BpfEvent) -> EventPayload {
         (EVENT_KIND_EXEC, EVENT_ACTION_BLOCK) => ("execve", "block", "critical"),
         (EVENT_KIND_PTRACE, EVENT_ACTION_BLOCK) => ("ptrace", "block", "critical"),
         (EVENT_KIND_FILE_WRITE, EVENT_ACTION_BLOCK) => ("file_write", "block", "critical"),
+        (EVENT_KIND_PIDFD_GETFD, EVENT_ACTION_OBSERVE) => ("pidfd_getfd", "observe", "warning"),
+        (EVENT_KIND_ESP_INPUT, EVENT_ACTION_OBSERVE) => ("esp_input", "observe", "warning"),
         _ => ("unknown", "observe", "info"),
     };
 
@@ -605,6 +609,8 @@ fn main() -> Result<()> {
     load_kprobe(&mut bpf, "observe_ptrace", "__x64_sys_ptrace", true)?;
     load_kprobe(&mut bpf, "observe_init_module", "__x64_sys_init_module", false)?;
     load_kprobe(&mut bpf, "observe_finit_module", "__x64_sys_finit_module", false)?;
+    load_tracepoint(&mut bpf, "observe_pidfd_getfd", "syscalls", "sys_enter_pidfd_getfd", false)?;
+    load_kprobe(&mut bpf, "observe_esp_input", "esp_input", false)?;
 
     let btf = Btf::from_sys_fs().context("BTF not available in /sys/kernel/btf/vmlinux")?;
     load_lsm(&mut bpf, "enforce_socket_connect", "socket_connect", &btf)?;

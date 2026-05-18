@@ -1006,9 +1006,29 @@ class AppHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
+    def _check_auth(self, path: str) -> bool:
+        if path == "/healthz": return True
+        if path.startswith("/api/v1/policy/") and not path.startswith("/api/v1/policy/blocked-") and not path.startswith("/api/v1/policy/protected-") and not path.startswith("/api/v1/policy/deny-"):
+            return True
+        if path == "/api/v1/agents/register": return True
+        if path == "/api/v1/events" and self.command == "POST": return True
+        
+        auth = self.headers.get("Authorization")
+        if auth == "Basic YWRtaW46c2VjcmV0":  # admin:secret
+            return True
+        
+        self.send_response(HTTPStatus.UNAUTHORIZED)
+        self.send_header("WWW-Authenticate", 'Basic realm="Unified Shield"')
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(b'{"error": "unauthorized"}')
+        return False
+
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path = parsed.path
+        if not self._check_auth(path):
+            return
         query = parse_qs(parsed.query)
 
         if path == "/healthz":
@@ -1077,6 +1097,8 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if not self._check_auth(path):
+            return
         payload = self._read_json()
 
         if path == "/api/v1/agents/register":
@@ -1182,6 +1204,8 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_DELETE(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if not self._check_auth(path):
+            return
         payload = self._read_json()
 
         if path == "/api/v1/policy/blocked-ipv4":
