@@ -1,391 +1,406 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Unified Shield Dashboard</title>
-    <link rel="stylesheet" href="/style.css" />
-  </head>
-  <body>
-    <div class="app-shell">
-      <header class="topbar">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3 5 6v6c0 4.7 2.9 7.8 7 9 4.1-1.2 7-4.3 7-9V6l-7-3Z"></path>
-              <path d="m9.5 12 1.8 1.8 3.7-4"></path>
-            </svg>
-          </div>
-          <div>
-            <h1>Unified Shield</h1>
-            <p>Kernel Threat Detection and eBPF-LSM IPS Control Plane</p>
-          </div>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ataree Dashboard</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M12 3 5 6v6c0 4.7 2.9 7.8 7 9 4.1-1.2 7-4.3 7-9V6l-7-3Z"></path>
+            <path d="m9.5 12 1.8 1.8 3.7-4"></path>
+          </svg>
         </div>
-
-        <div class="toolbar">
-          <label class="toolbar-field search-field">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="7"></circle>
-              <path d="m20 20-3.5-3.5"></path>
-            </svg>
-            <input id="search-input" type="search" placeholder="Search detectors, events, agents..." />
-          </label>
-
-          <label class="toolbar-field select-field">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="5" width="18" height="16" rx="2"></rect>
-              <path d="M16 3v4M8 3v4M3 10h18"></path>
-            </svg>
-            <select id="time-range">
-              <option value="24">Last 24 hours</option>
-              <option value="168">Last 7 days</option>
-              <option value="720">Last 30 days</option>
-              <option value="0">All time</option>
-            </select>
-          </label>
-
-          <button class="profile-button" type="button" aria-label="Operator profile">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M20 21a8 8 0 0 0-16 0"></path>
-              <circle cx="12" cy="8" r="4"></circle>
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      <main class="content">
-        <section class="kpi-grid">
-          <article class="kpi-card">
-            <div>
-              <p class="kpi-label">Online Agents</p>
-              <p class="kpi-value" id="agents-count">0</p>
-              <p class="kpi-meta" id="agents-meta">0 online, 0 offline</p>
-            </div>
-            <div class="kpi-icon success">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="6" rx="1.5"></rect>
-                <rect x="3" y="14" width="18" height="6" rx="1.5"></rect>
-                <path d="M7 7h.01M7 17h.01"></path>
-              </svg>
-            </div>
-          </article>
-
-          <article class="kpi-card">
-            <div>
-              <p class="kpi-label">Raw Events</p>
-              <p class="kpi-value" id="events-count">0</p>
-              <p class="kpi-meta" id="events-meta">No events in scope</p>
-            </div>
-            <div class="kpi-icon info">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 12h4l2-6 4 12 2-6h4"></path>
-              </svg>
-            </div>
-          </article>
-
-          <article class="kpi-card">
-            <div>
-              <p class="kpi-label">Detector Hits</p>
-              <p class="kpi-value" id="detections-count">0</p>
-              <p class="kpi-meta" id="detections-meta">0 detectors loaded</p>
-            </div>
-            <div class="kpi-icon warning">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3 2 21h20L12 3Z"></path>
-                <path d="M12 9v4"></path>
-                <path d="M12 17h.01"></path>
-              </svg>
-            </div>
-          </article>
-
-          <article class="kpi-card">
-            <div>
-              <p class="kpi-label">Blocked Actions</p>
-              <p class="kpi-value" id="blocked-count">0</p>
-              <p class="kpi-meta" id="blocked-meta">No active blocking yet</p>
-            </div>
-            <div class="kpi-icon critical">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3 5 6v6c0 4.7 2.9 7.8 7 9 4.1-1.2 7-4.3 7-9V6l-7-3Z"></path>
-                <path d="M12 8v4"></path>
-                <path d="M12 16h.01"></path>
-              </svg>
-            </div>
-          </article>
-
-          <article class="kpi-card">
-            <div>
-              <p class="kpi-label">Blocked IPs</p>
-              <p class="kpi-value" id="policy-count">0</p>
-              <p class="kpi-meta" id="policy-meta">0 active IPv4 rules</p>
-            </div>
-            <div class="kpi-icon critical">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 4h16v16H4z"></path>
-                <path d="m9 9 6 6M15 9l-6 6"></path>
-              </svg>
-            </div>
-          </article>
-
-          <article class="kpi-card">
-            <div>
-              <p class="kpi-label">Blocked Ports</p>
-              <p class="kpi-value" id="bind-count">0</p>
-              <p class="kpi-meta" id="bind-meta">0 active bind blocks</p>
-            </div>
-            <div class="kpi-icon critical">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 4h12"></path>
-                <path d="M12 4v16"></path>
-                <circle cx="12" cy="13" r="5"></circle>
-              </svg>
-            </div>
-          </article>
-        </section>
-
-        <section class="hero-grid">
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">Detections</p>
-                <h2>Triggered Detectors</h2>
-              </div>
-              <span class="panel-chip" id="detector-chip">0 hits</span>
-            </div>
-
-            <div class="table-wrap">
-              <table id="detections-table">
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>Detector</th>
-                    <th>Severity</th>
-                    <th>Agent</th>
-                    <th>Event</th>
-                    <th>Summary</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">Fleet</p>
-                <h2>Agent Fleet Overview</h2>
-              </div>
-              <span class="panel-chip" id="fleet-chip">0 agents</span>
-            </div>
-
-            <div class="table-wrap">
-              <table id="agents-table">
-                <thead>
-                  <tr>
-                    <th>Hostname</th>
-                    <th>IP Address</th>
-                    <th>Kernel</th>
-                    <th>Status</th>
-                    <th>Last Seen</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </section>
-        </section>
-
-        <section class="insight-grid">
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">Distribution</p>
-                <h2>Detection Severity</h2>
-              </div>
-            </div>
-
-            <div id="severity-chart" class="legend-list"></div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">Leaders</p>
-                <h2>Top Firing Detectors</h2>
-              </div>
-            </div>
-
-            <div id="top-detectors-chart" class="top-detectors-list"></div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">Trend</p>
-                <h2>Event Volume</h2>
-              </div>
-              <span class="panel-chip" id="volume-label">24h window</span>
-            </div>
-
-            <div id="volume-chart" class="volume-chart"></div>
-          </section>
-        </section>
-
-        <section class="lower-grid">
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">Telemetry</p>
-                <h2>Recent Security Events</h2>
-              </div>
-              <span class="panel-chip live">Live stream</span>
-            </div>
-
-            <div class="table-wrap">
-              <table id="events-table">
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>Agent</th>
-                    <th>Event Type</th>
-                    <th>Process</th>
-                    <th>Subject</th>
-                    <th>Destination</th>
-                    <th>Severity</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">Rules</p>
-                <h2>Detector Catalog</h2>
-              </div>
-              <span class="panel-chip" id="catalog-chip">0 loaded</span>
-            </div>
-
-            <div id="detector-list" class="detector-list"></div>
-          </section>
-        </section>
-
-        <section class="policy-grid">
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow critical">Policy</p>
-                <h2>Blocked IPv4 Policy</h2>
-              </div>
-            </div>
-
-            <form id="policy-form" class="policy-form">
-              <input id="ip-input" type="text" placeholder="Enter IP address (e.g. 203.0.113.10)" required />
-              <input id="ip-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
-              <button type="submit" class="critical-button">Block IP</button>
-            </form>
-
-            <div id="policy-list" class="policy-list"></div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow critical">LSM</p>
-                <h2>Blocked Bind Ports</h2>
-              </div>
-            </div>
-
-            <form id="bind-policy-form" class="policy-form">
-              <input id="bind-port-input" type="number" min="1" max="65535" placeholder="Enter local bind port (e.g. 4444)" required />
-              <input id="bind-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
-              <button type="submit" class="critical-button">Block Port</button>
-            </form>
-
-            <div id="bind-policy-list" class="policy-list"></div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow critical">LSM</p>
-                <h2>Denied Exec Paths</h2>
-              </div>
-            </div>
-
-            <form id="exec-policy-form" class="policy-form">
-              <input id="exec-path-input" type="text" placeholder="Enter exact exec path (e.g. /usr/bin/nc)" required />
-              <input id="exec-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
-              <button type="submit" class="critical-button">Block Exec</button>
-            </form>
-
-            <div id="exec-policy-list" class="policy-list"></div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow critical">LSM</p>
-                <h2>Protected Write Targets</h2>
-              </div>
-            </div>
-
-            <form id="write-policy-form" class="policy-form">
-              <input id="write-target-input" type="text" placeholder="Enter basename to protect (e.g. shadow)" required />
-              <input id="write-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
-              <button type="submit" class="critical-button">Protect Target</button>
-            </form>
-
-            <div id="write-policy-list" class="policy-list"></div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow critical">LSM</p>
-                <h2>Ptrace Deny</h2>
-              </div>
-            </div>
-
-            <form id="ptrace-policy-form" class="policy-form">
-              <input id="ptrace-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
-              <button type="submit" class="critical-button">Enable Ptrace Deny</button>
-            </form>
-
-            <div id="ptrace-policy-list" class="policy-list"></div>
-          </section>
-        </section>
-      </main>
-    </div>
-
-    <aside id="detection-backdrop" class="drawer-backdrop hidden"></aside>
-    <aside id="detection-drawer" class="detail-drawer hidden" aria-hidden="true">
-      <div class="drawer-header">
         <div>
-          <p class="eyebrow">Detection Detail</p>
-          <h2 id="drawer-title">No detection selected</h2>
+          <h1>Ataree</h1>
+          <p>Kernel Threat Detection and eBPF-LSM IPS Control Plane</p>
         </div>
-        <button id="drawer-close" class="drawer-close" type="button" aria-label="Close detection detail">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m18 6-12 12"></path>
-            <path d="m6 6 12 12"></path>
+      </div>
+
+      <div class="toolbar">
+        <label class="toolbar-field search-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-3.5-3.5"></path>
+          </svg>
+          <input id="search-input" type="search" placeholder="Search detectors, events, agents..." />
+        </label>
+
+        <label class="toolbar-field select-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+            <path d="M16 3v4M8 3v4M3 10h18"></path>
+          </svg>
+          <select id="time-range">
+            <option value="24">Last 24 hours</option>
+            <option value="168">Last 7 days</option>
+            <option value="720">Last 30 days</option>
+            <option value="0">All time</option>
+          </select>
+        </label>
+
+        <button class="profile-button" type="button" aria-label="Operator profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 21a8 8 0 0 0-16 0"></path>
+            <circle cx="12" cy="8" r="4"></circle>
           </svg>
         </button>
       </div>
-      <div id="drawer-body" class="drawer-body"></div>
-    </aside>
+    </header>
 
-    <template id="empty-state-template">
-      <div class="empty-state">
-        <p class="empty-title"></p>
-        <p class="empty-copy"></p>
+    <main class="content">
+      <section class="kpi-grid">
+        <article class="kpi-card">
+          <div>
+            <p class="kpi-label">Online Agents</p>
+            <p class="kpi-value" id="agents-count">0</p>
+            <p class="kpi-meta" id="agents-meta">0 online, 0 offline</p>
+          </div>
+          <div class="kpi-icon success">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+              stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="6" rx="1.5"></rect>
+              <rect x="3" y="14" width="18" height="6" rx="1.5"></rect>
+              <path d="M7 7h.01M7 17h.01"></path>
+            </svg>
+          </div>
+        </article>
+
+        <article class="kpi-card">
+          <div>
+            <p class="kpi-label">Raw Events</p>
+            <p class="kpi-value" id="events-count">0</p>
+            <p class="kpi-meta" id="events-meta">No events in scope</p>
+          </div>
+          <div class="kpi-icon info">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M4 12h4l2-6 4 12 2-6h4"></path>
+            </svg>
+          </div>
+        </article>
+
+        <article class="kpi-card">
+          <div>
+            <p class="kpi-label">Detector Hits</p>
+            <p class="kpi-value" id="detections-count">0</p>
+            <p class="kpi-meta" id="detections-meta">0 detectors loaded</p>
+          </div>
+          <div class="kpi-icon warning">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M12 3 2 21h20L12 3Z"></path>
+              <path d="M12 9v4"></path>
+              <path d="M12 17h.01"></path>
+            </svg>
+          </div>
+        </article>
+
+        <article class="kpi-card">
+          <div>
+            <p class="kpi-label">Blocked Actions</p>
+            <p class="kpi-value" id="blocked-count">0</p>
+            <p class="kpi-meta" id="blocked-meta">No active blocking yet</p>
+          </div>
+          <div class="kpi-icon critical">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M12 3 5 6v6c0 4.7 2.9 7.8 7 9 4.1-1.2 7-4.3 7-9V6l-7-3Z"></path>
+              <path d="M12 8v4"></path>
+              <path d="M12 16h.01"></path>
+            </svg>
+          </div>
+        </article>
+
+        <article class="kpi-card">
+          <div>
+            <p class="kpi-label">Blocked IPs</p>
+            <p class="kpi-value" id="policy-count">0</p>
+            <p class="kpi-meta" id="policy-meta">0 active IPv4 rules</p>
+          </div>
+          <div class="kpi-icon critical">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M4 4h16v16H4z"></path>
+              <path d="m9 9 6 6M15 9l-6 6"></path>
+            </svg>
+          </div>
+        </article>
+
+        <article class="kpi-card">
+          <div>
+            <p class="kpi-label">Blocked Ports</p>
+            <p class="kpi-value" id="bind-count">0</p>
+            <p class="kpi-meta" id="bind-meta">0 active bind blocks</p>
+          </div>
+          <div class="kpi-icon critical">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M6 4h12"></path>
+              <path d="M12 4v16"></path>
+              <circle cx="12" cy="13" r="5"></circle>
+            </svg>
+          </div>
+        </article>
+      </section>
+
+      <section class="hero-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Detections</p>
+              <h2>Triggered Detectors</h2>
+            </div>
+            <span class="panel-chip" id="detector-chip">0 hits</span>
+          </div>
+
+          <div class="table-wrap">
+            <table id="detections-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Detector</th>
+                  <th>Severity</th>
+                  <th>Agent</th>
+                  <th>Event</th>
+                  <th>Summary</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Fleet</p>
+              <h2>Agent Fleet Overview</h2>
+            </div>
+            <span class="panel-chip" id="fleet-chip">0 agents</span>
+          </div>
+
+          <div class="table-wrap">
+            <table id="agents-table">
+              <thead>
+                <tr>
+                  <th>Hostname</th>
+                  <th>IP Address</th>
+                  <th>Kernel</th>
+                  <th>Status</th>
+                  <th>Last Seen</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="insight-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Distribution</p>
+              <h2>Detection Severity</h2>
+            </div>
+          </div>
+
+          <div id="severity-chart" class="legend-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Leaders</p>
+              <h2>Top Firing Detectors</h2>
+            </div>
+          </div>
+
+          <div id="top-detectors-chart" class="top-detectors-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Trend</p>
+              <h2>Event Volume</h2>
+            </div>
+            <span class="panel-chip" id="volume-label">24h window</span>
+          </div>
+
+          <div id="volume-chart" class="volume-chart"></div>
+        </section>
+      </section>
+
+      <section class="lower-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Telemetry</p>
+              <h2>Recent Security Events</h2>
+            </div>
+            <span class="panel-chip live">Live stream</span>
+          </div>
+
+          <div class="table-wrap">
+            <table id="events-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Agent</th>
+                  <th>Event Type</th>
+                  <th>Process</th>
+                  <th>Subject</th>
+                  <th>Destination</th>
+                  <th>Severity</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Rules</p>
+              <h2>Detector Catalog</h2>
+            </div>
+            <span class="panel-chip" id="catalog-chip">0 loaded</span>
+          </div>
+
+          <div id="detector-list" class="detector-list"></div>
+        </section>
+      </section>
+
+      <section class="policy-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow critical">Policy</p>
+              <h2>Blocked IPv4 Policy</h2>
+            </div>
+          </div>
+
+          <form id="policy-form" class="policy-form">
+            <input id="ip-input" type="text" placeholder="Enter IP address (e.g. 203.0.113.10)" required />
+            <input id="ip-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
+            <button type="submit" class="critical-button">Block IP</button>
+          </form>
+
+          <div id="policy-list" class="policy-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow critical">LSM</p>
+              <h2>Blocked Bind Ports</h2>
+            </div>
+          </div>
+
+          <form id="bind-policy-form" class="policy-form">
+            <input id="bind-port-input" type="number" min="1" max="65535"
+              placeholder="Enter local bind port (e.g. 4444)" required />
+            <input id="bind-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
+            <button type="submit" class="critical-button">Block Port</button>
+          </form>
+
+          <div id="bind-policy-list" class="policy-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow critical">LSM</p>
+              <h2>Denied Exec Paths</h2>
+            </div>
+          </div>
+
+          <form id="exec-policy-form" class="policy-form">
+            <input id="exec-path-input" type="text" placeholder="Enter exact exec path (e.g. /usr/bin/nc)" required />
+            <input id="exec-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
+            <button type="submit" class="critical-button">Block Exec</button>
+          </form>
+
+          <div id="exec-policy-list" class="policy-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow critical">LSM</p>
+              <h2>Protected Write Targets</h2>
+            </div>
+          </div>
+
+          <form id="write-policy-form" class="policy-form">
+            <input id="write-target-input" type="text" placeholder="Enter basename to protect (e.g. shadow)" required />
+            <input id="write-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
+            <button type="submit" class="critical-button">Protect Target</button>
+          </form>
+
+          <div id="write-policy-list" class="policy-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow critical">LSM</p>
+              <h2>Ptrace Deny</h2>
+            </div>
+          </div>
+
+          <form id="ptrace-policy-form" class="policy-form">
+            <input id="ptrace-agent-input" type="text" placeholder="Optional agent id for scoped rule" />
+            <button type="submit" class="critical-button">Enable Ptrace Deny</button>
+          </form>
+
+          <div id="ptrace-policy-list" class="policy-list"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <aside id="detection-backdrop" class="drawer-backdrop hidden"></aside>
+  <aside id="detection-drawer" class="detail-drawer hidden" aria-hidden="true">
+    <div class="drawer-header">
+      <div>
+        <p class="eyebrow">Detection Detail</p>
+        <h2 id="drawer-title">No detection selected</h2>
       </div>
-    </template>
+      <button id="drawer-close" class="drawer-close" type="button" aria-label="Close detection detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="m18 6-12 12"></path>
+          <path d="m6 6 12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div id="drawer-body" class="drawer-body"></div>
+  </aside>
 
-    <script src="/app.js"></script>
-  </body>
+  <template id="empty-state-template">
+    <div class="empty-state">
+      <p class="empty-title"></p>
+      <p class="empty-copy"></p>
+    </div>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+
 </html>

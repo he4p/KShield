@@ -1,6 +1,6 @@
 # Manager API Reference
 
-The Unified Shield backend manager exposes a RESTful API over HTTP to interact with agents, fetch metrics, and manage LSM enforcement policies. Below is the API reference.
+The Ataree backend manager exposes a RESTful API over HTTP to interact with agents, fetch metrics, and manage LSM enforcement policies. Below is the API reference.
 
 > **Note on Authentication:**
 > Most endpoints used by the dashboard UI require HTTP Basic Authentication (`admin:secret`), with the exception of `/healthz`, `/api/v1/agents/register`, and `/api/v1/policy/{agent_id}`.

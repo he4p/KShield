@@ -1,0 +1,1317 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+  12pt,
+]{report}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{5}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Ataree Workflows: A Comprehensive eBPF-based Linux Runtime Security Framework},
+  pdfauthor={Academic Project Report},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Ataree Workflows: A Comprehensive eBPF-based Linux Runtime
+Security Framework}
+\author{Academic Project Report}
+\date{\today}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+As cloud-native environments and microservice architectures continue to
+dominate the modern digital landscape, the requirement for robust,
+low-overhead introspection within the Linux kernel has grown
+exponentially. Standard user-space protections are increasingly evaded
+by sophisticated kernel-level exploit methodologies and
+hardware-adjacent vulnerabilities limit the efficacy of generic endpoint
+security solutions. This report details the theoretical formulation,
+architectural design, and deployment implementation of \textbf{Ataree},
+a modernized Linux Runtime Security mechanism. Ataree strategically
+consolidates the structural documentation robustness of the
+\texttt{ataree} project and the low-level execution power of the
+\texttt{KShield} agent-manager paradigm. The resulting framework
+provides unparalleled introspection via enhanced Berkeley Packet Filter
+(eBPF) technologies, leveraging direct hooks into kernel tracepoints,
+network stacks, and Linux Security Modules (LSM) to deliver real-time
+telemetry streaming and automated enforcement configurations. The system
+boasts an extensible TOML-based 0-day detection suite and a deeply
+optimized, glassmorphic UX backend dashboard deployed over a secure,
+authenticated REST API.
+\end{abstract}
+
+{
+\setcounter{tocdepth}{2}
+\tableofcontents
+}
+\newpage
+
+\chapter{Introduction \& Core
+Overview}\label{introduction-core-overview}
+
+\begin{figure}[h]
+\centering
+\vspace{5cm}
+\caption{Illustration mapping the logical boundary of the Introduction & Core Overview implementation.}
+\end{figure}
+
+\textbf{Ataree} is a Linux runtime security project built using eBPF,
+combining the robustness of the KShield telemetry manager and agent with
+modern documentation and UI methodologies.
+
+It observes kernel activity in real time and streams structured events
+securely to an IPS Control Plane (Manager) for inspection, filtering,
+analysis, and active enforcement via LSM hooks.
+
+\section{Overview}\label{overview}
+
+At its core, Ataree uses:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{eBPF Agent (Rust)}: BPF programs tracing
+  \texttt{sys\_enter\_*}, \texttt{esp\_input}, and other core kernel
+  tracepoints, effectively mapping raw kernel state to telemetry
+  structures.
+\item
+  \textbf{Python Manager}: A fast backend server ingesting streams of
+  telemetry over a REST API and correlating them with runtime
+  \texttt{.toml} detectors.
+\item
+  \textbf{LSM Enforcement}: Actively blocking unauthorized file writes,
+  network hooks, and \texttt{ptrace} manipulations without incurring
+  context-switching overhead.
+\item
+  \textbf{Dashboard}: A gorgeous, glassmorphic frontend UI pulling
+  metrics securely via REST.
+\end{itemize}
+
+\section{Core Features}\label{core-features}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Novel 0-Day Detection}: Accurately intercepting explicit
+  mechanisms such as CVE-2026-43284 IPsSec ESP UDP fast-paths and
+  CVE-2026-46333 \texttt{pidfd\_getfd} exploit attempts.
+\item
+  \textbf{Extensible Detection}: Add new logic via
+  \texttt{manager/detectors/*.toml} files that are automatically
+  synchronized to the kernel and manager state; zero compilation
+  required.
+\item
+  \textbf{Beautiful UX}: A fully modern, beautifully orchestrated,
+  natively responsive dark mode display for Security Operators.
+\end{itemize}
+
+!!! tip ``Quick Start'' Check out the
+\textbf{\href{api-reference.md}{API Reference}} to script against the
+manager, or read the \textbf{\href{extensibility.md}{Extensibility
+Guide}} to add your very own kernel rules!
+
+\clearpage
+
+\chapter{System Architecture}\label{system-architecture}
+
+\begin{figure}[h]
+\centering
+\vspace{5cm}
+\caption{Illustration mapping the logical boundary of the System Architecture implementation.}
+\end{figure}
+
+\section{Manager}\label{manager}
+
+\begin{itemize}
+\tightlist
+\item
+  Runtime: Python \texttt{http.server} (\texttt{manager/app.py})
+\item
+  Storage: SQLite (\texttt{manager/data/siem.db})
+\item
+  Detector loading: TOML definitions from \texttt{manager/detectors/}
+\item
+  Detector authoring guide: \url{detectors.md}
+\item
+  Dashboard: static HTML/CSS/JS in \texttt{manager/static}
+\item
+  APIs:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \texttt{POST\ /api/v1/agents/register}
+  \item
+    \texttt{GET\ /api/v1/agents}
+  \item
+    \texttt{POST\ /api/v1/events}
+  \item
+    \texttt{GET\ /api/v1/events}
+  \item
+    \texttt{GET\ /api/v1/detections}
+  \item
+    \texttt{GET\ /api/v1/detectors}
+  \item
+    \texttt{GET\ /api/v1/metrics/summary}
+  \item
+    \texttt{GET\ /api/v1/policy}
+  \item
+    \texttt{GET\ /api/v1/policy/\textless{}agent\_id\textgreater{}}
+  \item
+    \texttt{POST\ /api/v1/policy/blocked-ipv4}
+  \item
+    \texttt{DELETE\ /api/v1/policy/blocked-ipv4}
+  \item
+    \texttt{POST\ /api/v1/policy/blocked-bind-port}
+  \item
+    \texttt{DELETE\ /api/v1/policy/blocked-bind-port}
+  \end{itemize}
+\end{itemize}
+
+\section{Agent}\label{agent}
+
+\begin{itemize}
+\tightlist
+\item
+  Runtime: Rust (\texttt{agent/src/main.rs})
+\item
+  Kernel programs:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \texttt{kprobe/\_\_x64\_sys\_execve} -\textgreater{} execution
+    telemetry
+  \item
+    \texttt{kprobe/\_\_x64\_sys\_openat} -\textgreater{} file access
+    telemetry
+  \item
+    \texttt{kprobe/\_\_x64\_sys\_openat2} -\textgreater{} file access
+    telemetry when available
+  \item
+    \texttt{kprobe/\_\_x64\_sys\_ptrace} -\textgreater{} ptrace
+    telemetry
+  \item
+    \texttt{kprobe/\_\_x64\_sys\_init\_module} -\textgreater{} module
+    load telemetry when available
+  \item
+    \texttt{kprobe/\_\_x64\_sys\_finit\_module} -\textgreater{} module
+    load telemetry when available
+  \item
+    \texttt{lsm/socket\_connect} -\textgreater{} inline IPv4 destination
+    blocking
+  \item
+    \texttt{lsm/socket\_bind} -\textgreater{} inline local bind-port
+    blocking
+  \item
+    \texttt{lsm/ptrace\_access\_check} -\textgreater{} inline ptrace
+    deny policy
+  \item
+    \texttt{lsm/bprm\_check\_security} -\textgreater{} inline selected
+    exec-path blocking
+  \item
+    \texttt{lsm/file\_permission} -\textgreater{} inline protected
+    write-target blocking
+  \end{itemize}
+\item
+  Maps:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \texttt{EVENTS} (ringbuf): kernel -\textgreater{} userspace events
+  \item
+    \texttt{BLOCKED\_IPV4} (hash): userspace policy -\textgreater{}
+    \texttt{socket\_connect} enforcement
+  \item
+    \texttt{BLOCKED\_BIND\_PORTS} (hash): userspace policy
+    -\textgreater{} \texttt{socket\_bind} enforcement
+  \item
+    \texttt{BLOCKED\_EXEC\_PATHS} (hash): userspace policy
+    -\textgreater{} \texttt{bprm\_check\_security} enforcement
+  \item
+    \texttt{PROTECTED\_WRITE\_TARGETS} (hash): userspace policy
+    -\textgreater{} \texttt{file\_permission} enforcement
+  \item
+    \texttt{DENY\_PTRACE} (hash): userspace policy -\textgreater{}
+    \texttt{ptrace\_access\_check} enforcement
+  \end{itemize}
+\end{itemize}
+
+\section{Event Flow}\label{event-flow}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Kernel eBPF programs emit raw events to the ring buffer.
+\item
+  Agent reads ring buffer events and converts them to JSON.
+\item
+  Agent POSTs raw events to \texttt{/api/v1/events}.
+\item
+  Manager stores raw events in the \texttt{events} table.
+\item
+  Manager evaluates each event against loaded detector definitions.
+\item
+  Matching detectors produce derived detection hits in the
+  \texttt{detections} table.
+\item
+  Dashboard renders both raw events and triggered detections.
+\end{enumerate}
+
+\section{Policy Flow}\label{policy-flow}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Operator creates or updates policy in the dashboard.
+\item
+  Manager persists policy in SQLite.
+\item
+  Agent polls
+  \texttt{/api/v1/policy/\textless{}agent\_id\textgreater{}}.
+\item
+  Agent rewrites the relevant eBPF policy maps.
+\item
+  LSM hooks return \texttt{-EPERM} for blocked actions.
+\item
+  The same LSM hooks still emit ring-buffer events so policy hits are
+  visible in the UI and can trigger detectors.
+\end{enumerate}
+
+\section{Detector Flow}\label{detector-flow}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Operator or developer adds a TOML detector under
+  \texttt{manager/detectors/}.
+\item
+  Manager reloads detector definitions when the directory contents
+  change.
+\item
+  Incoming events are evaluated against detector match criteria such as:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \texttt{event\_types}
+  \item
+    \texttt{actions}
+  \item
+    \texttt{comm\_in}
+  \item
+    \texttt{subject\_prefixes}
+  \item
+    \texttt{subject\_contains}
+  \item
+    \texttt{dst\_ports}
+  \item
+    \texttt{dst\_ips}
+  \item
+    \texttt{arg0\_in}
+  \item
+    \texttt{arg1\_in}
+  \end{itemize}
+\item
+  Matching events create persisted detection hits.
+\item
+  Dashboard shows detector hit volume, hit details, and per-detector hit
+  counts.
+\end{enumerate}
+
+\clearpage
+
+\chapter{Security Dashboard \& Controller API
+Reference}\label{security-dashboard-controller-api-reference}
+
+\begin{figure}[h]
+\centering
+\vspace{5cm}
+\caption{Illustration mapping the logical boundary of the Security Dashboard & Controller API Reference implementation.}
+\end{figure}
+
+The Ataree backend manager exposes a RESTful API over HTTP to interact
+with agents, fetch metrics, and manage LSM enforcement policies. Below
+is the API reference.
+
+\begin{quote}
+\textbf{Note on Authentication:} Most endpoints used by the dashboard UI
+require HTTP Basic Authentication (\texttt{admin:secret}), with the
+exception of \texttt{/healthz}, \texttt{/api/v1/agents/register}, and
+\texttt{/api/v1/policy/\{agent\_id\}}.
+\end{quote}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Agent \& Event Ingestion}\label{agent-event-ingestion}
+
+\subsection{\texorpdfstring{\texttt{POST\ /api/v1/agents/register}}{POST /api/v1/agents/register}}\label{post-apiv1agentsregister}
+
+Registers a new eBPF agent. - \textbf{Payload:}
+\texttt{\{"hostname":\ "...",\ "ip":\ "...",\ "kernel":\ "...",\ "version":\ "..."\}}
+- \textbf{Returns:}
+\texttt{\{"agent\_id":\ "\textless{}uuid\textgreater{}"\}}
+
+\subsection{\texorpdfstring{\texttt{POST\ /api/v1/events}}{POST /api/v1/events}}\label{post-apiv1events}
+
+Submit a batch of raw telemetry events gathered by the eBPF agent from
+the kernel ring buffer. - \textbf{Payload:}
+\texttt{\{"events":\ {[}\ \{\ ...\ \}\ {]}\}} - \textbf{Returns:}
+\texttt{\{"written":\ int\}}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Dashboard Data}\label{dashboard-data}
+
+\subsection{\texorpdfstring{\texttt{GET\ /api/v1/metrics/summary}}{GET /api/v1/metrics/summary}}\label{get-apiv1metricssummary}
+
+Returns overarching aggregation statistics for the dashboard. -
+\textbf{Returns:} Total occurrences, blocked events, severity breakdown,
+and loaded policy counts.
+
+\subsection{\texorpdfstring{\texttt{GET\ /api/v1/agents}}{GET /api/v1/agents}}\label{get-apiv1agents}
+
+Returns a list of all known registered agents and their last seen
+statuses.
+
+\subsection{\texorpdfstring{\texttt{GET\ /api/v1/events}}{GET /api/v1/events}}\label{get-apiv1events}
+
+Returns a paginated list of recent raw telemetry events. - \textbf{Query
+Params:} \texttt{limit} (default: 200, max: 2000)
+
+\subsection{\texorpdfstring{\texttt{GET\ /api/v1/detections}}{GET /api/v1/detections}}\label{get-apiv1detections}
+
+Returns a list of events that matched active TOML detectors (Triggered
+Detectors). - \textbf{Query Params:} \texttt{limit} (default: 200, max:
+2000)
+
+\subsection{\texorpdfstring{\texttt{GET\ /api/v1/detectors}}{GET /api/v1/detectors}}\label{get-apiv1detectors}
+
+Returns all active loaded rules from the
+\texttt{manager/detectors/*.toml} directory, with their current live hit
+counts.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Policy \& LSM Enforcement}\label{policy-lsm-enforcement}
+
+Policies dictating what gets blocked (IPv4s, bind ports, exec paths,
+file writes, ptrace) can be dynamically configured.
+
+\subsection{\texorpdfstring{\texttt{GET\ /api/v1/policy}}{GET /api/v1/policy}}\label{get-apiv1policy}
+
+Returns all globally defined policies.
+
+\subsection{\texorpdfstring{\texttt{GET\ /api/v1/policy/\{agent\_id\}}}{GET /api/v1/policy/\{agent\_id\}}}\label{get-apiv1policyagent_id}
+
+Returns all active policies tailored to a specific agent's scope. The
+agents constantly poll this endpoint.
+
+\subsection{Modifying Policies}\label{modifying-policies}
+
+You can add or remove policies via \texttt{POST} or \texttt{DELETE}
+across various sub-routes: - \texttt{/api/v1/policy/blocked-ipv4} -
+\texttt{/api/v1/policy/blocked-bind-port} -
+\texttt{/api/v1/policy/blocked-exec-path} -
+\texttt{/api/v1/policy/protected-write-target} -
+\texttt{/api/v1/policy/deny-ptrace}
+
+\textbf{POST Example (Block an IP):}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{\{}
+  \DataTypeTok{"ip"}\FunctionTok{:} \StringTok{"203.0.113.10"}\FunctionTok{,}
+  \DataTypeTok{"enabled"}\FunctionTok{:} \KeywordTok{true}\FunctionTok{,}
+  \DataTypeTok{"agent\_id"}\FunctionTok{:} \StringTok{""} 
+\FunctionTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{DELETE Example:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{\{}
+  \DataTypeTok{"ip"}\FunctionTok{:} \StringTok{"203.0.113.10"}\FunctionTok{,}
+  \DataTypeTok{"agent\_id"}\FunctionTok{:} \StringTok{""} 
+\FunctionTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\emph{(Passing an empty \texttt{agent\_id} scopes the rule globally.)}
+
+\clearpage
+
+\chapter{Out-of-the-Box Protection: Preloaded
+Detectors}\label{out-of-the-box-protection-preloaded-detectors}
+
+\begin{figure}[h]
+\centering
+\vspace{5cm}
+\caption{Illustration mapping the logical boundary of the Out-of-the-Box Protection: Preloaded Detectors implementation.}
+\end{figure}
+
+Here are all the out-of-the-box detectors available in Ataree:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Blocked Bind Port}: Highlights bind attempts denied by port
+  policy.
+\item
+  \textbf{Blocked Egress Connection}: Highlights outbound network
+  connections blocked by policy.
+\item
+  \textbf{Blocked Exec Path}: Highlights execution denied by selected
+  exec path policy.
+\item
+  \textbf{Blocked Ptrace}: Highlights ptrace access denied by policy.
+\item
+  \textbf{Blocked Sensitive Write}: Highlights denied writes to
+  protected targets.
+\item
+  \textbf{BPF Syscall Use}: Flags direct bpf syscall use from userspace.
+\item
+  \textbf{CVE-2026-43284 ESP-in-UDP Splice}: Flags ESP packets parsed by
+  esp\_input, catching potential exploitation of the SKBFL\_SHARED\_FRAG
+  decrypt-in-place bug.
+\item
+  \textbf{CVE-2026-46333 Exploitation Attempt}: Flags usage of
+  pidfd\_getfd to copy file descriptors from privileged processes,
+  indicating the ssh-keysign-pwn race condition.
+\item
+  \textbf{Interactive Shell Execution}: Flags execution of common
+  interactive shells.
+\item
+  \textbf{Kernel Module Load Attempt}: Flags runtime kernel module
+  loading attempts.
+\item
+  \textbf{Mount Activity}: Flags mount syscall activity for manual
+  review.
+\item
+  \textbf{Kernel Memory Recon}: Flags reads of /proc/kcore which often
+  indicate kernel memory reconnaissance.
+\item
+  \textbf{Ptrace Attach Attempt}: Flags ptrace activity that can
+  indicate live process tampering or debugging.
+\item
+  \textbf{Repeated Bind Denials}: Flags repeated blocked bind attempts
+  against the same port and process.
+\item
+  \textbf{Sensitive Shadow Access}: Flags access attempts against
+  /etc/shadow.
+\item
+  \textbf{Setuid To Root}: Flags attempts to change effective uid to 0.
+\end{itemize}
+
+\clearpage
+
+\chapter{Extensibility Guide: Writing Custom
+Rules}\label{extensibility-guide-writing-custom-rules}
+
+\begin{figure}[h]
+\centering
+\vspace{5cm}
+\caption{Illustration mapping the logical boundary of the Extensibility Guide: Writing Custom Rules implementation.}
+\end{figure}
+
+Ataree is designed from the ground up to be fully extensible with
+minimal friction. This guide illustrates how you can extend the platform
+to detect novel threats.
+
+\section{1. Zero-Compile Exploit
+Detection}\label{zero-compile-exploit-detection}
+
+Unlike traditional kernel models that require complex re-compilation
+targeting specific kernel headers to identify new exploits,
+\textbf{Ataree} allows rapid, declarative \texttt{.toml} syntax
+matchers.
+
+When the agent intercepts activity (like
+\texttt{sys\_enter\_pidfd\_getfd} or \texttt{esp\_input}), it streams it
+immediately to the backend Manager pipeline.
+
+\subsection{The Detector Pipeline}\label{the-detector-pipeline}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{graph TD}
+\NormalTok{    A[Attack/Exploit Trigger] {-}{-}\textgreater{} B(eBPF Tracepoint)}
+\NormalTok{    B {-}{-}\textgreater{} C(BPF Ring Buffer)}
+\NormalTok{    C {-}{-}\textgreater{} D[Ataree Rust Agent]}
+\NormalTok{    D {-}{-} REST POST {-}{-}\textgreater{} E[Ataree Python Manager]}
+\NormalTok{    E {-}{-}\textgreater{} F\{TOML Detectors Engine\}}
+\NormalTok{    F {-}{-} Match {-}{-}\textgreater{} G[Triggered Detections Table]}
+\NormalTok{    F {-}{-} Clean {-}{-}\textgreater{} H[Normal Telemetry Stream]}
+\end{Highlighting}
+\end{Shaded}
+
+\section{2. Authoring a New Detector}\label{authoring-a-new-detector}
+
+The Ataree manager dynamically loads \texttt{.toml} detector files from
+the \texttt{manager/detectors/} directory. 2. Map it to a human-readable
+string inside \texttt{convert\_event()} (e.g.,
+\texttt{"my\_new\_event"}). 3. Rebuild the agent using
+\texttt{bash\ scripts/build\_agent.sh}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+The Unified Shield manager dynamically loads \texttt{.toml} detector
+files from the \texttt{manager/detectors/} directory.
+
+\subsection{Detector Structure}\label{detector-structure}
+
+You do not need to modify any code to add a detector. Simply create a
+file such as \texttt{my-detector.toml}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DataTypeTok{id} \OperatorTok{=} \StringTok{"my{-}new{-}rule"}
+\DataTypeTok{name} \OperatorTok{=} \StringTok{"My Novel Threat Detector"}
+\DataTypeTok{description} \OperatorTok{=} \StringTok{"Flags this specific telemetry signature."}
+\DataTypeTok{severity} \OperatorTok{=} \StringTok{"critical"}
+\DataTypeTok{tags} \OperatorTok{=} \OperatorTok{[}\StringTok{"custom"}\OperatorTok{,} \StringTok{"threat"}\OperatorTok{]}
+\DataTypeTok{summary\_template} \OperatorTok{=} \StringTok{"\{comm\} triggered the custom rule on \{subject\}"}
+
+\KeywordTok{[match]}
+\DataTypeTok{event\_types} \OperatorTok{=} \OperatorTok{[}\StringTok{"my\_new\_event"}\OperatorTok{]}
+\DataTypeTok{comm\_in} \OperatorTok{=} \OperatorTok{[}\StringTok{"malware"}\OperatorTok{,} \StringTok{"evil"}\OperatorTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Real-Time Loading}\label{real-time-loading}
+
+The manager automatically synchronizes and reloads \texttt{.toml} files
+upon modification without downtime. Just save the file inside
+\texttt{manager/detectors} and watch the Dashboard for hits!
+
+\clearpage
+
+\chapter{Detector Engine Capabilities \&
+Syntax}\label{detector-engine-capabilities-syntax}
+
+\begin{figure}[h]
+\centering
+\vspace{5cm}
+\caption{Illustration mapping the logical boundary of the Detector Engine Capabilities & Syntax implementation.}
+\end{figure}
+
+KShield detectors are TOML files in \texttt{manager/detectors/}. They
+match normalized events after the manager stores raw agent events.
+Adding a detector does not require rebuilding the agent.
+
+\section{Quick Start}\label{quick-start}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Create a new \texttt{*.toml} file under \texttt{manager/detectors/}.
+\item
+  Give it a unique \texttt{id}.
+\item
+  Choose match fields under \texttt{{[}match{]}}.
+\item
+  Start or refresh the manager. The manager reloads detectors when files
+  change.
+\item
+  Generate matching telemetry and check \texttt{/api/v1/detections} or
+  the dashboard.
+\end{enumerate}
+
+Example:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DataTypeTok{id} \OperatorTok{=} \StringTok{"suspicious{-}shell{-}from{-}temp"}
+\DataTypeTok{name} \OperatorTok{=} \StringTok{"Suspicious Shell From Temp"}
+\DataTypeTok{description} \OperatorTok{=} \StringTok{"Flags shell execution where the executed path is under /tmp."}
+\DataTypeTok{severity} \OperatorTok{=} \StringTok{"warning"}
+\DataTypeTok{tags} \OperatorTok{=} \OperatorTok{[}\StringTok{"execution"}\OperatorTok{,} \StringTok{"suspicious{-}path"}\OperatorTok{]}
+\DataTypeTok{summary\_template} \OperatorTok{=} \StringTok{"\{comm\} executed \{subject\}"}
+
+\KeywordTok{[match]}
+\DataTypeTok{event\_types} \OperatorTok{=} \OperatorTok{[}\StringTok{"execve"}\OperatorTok{]}
+\DataTypeTok{comm\_in} \OperatorTok{=} \OperatorTok{[}\StringTok{"bash"}\OperatorTok{,} \StringTok{"sh"}\OperatorTok{,} \StringTok{"dash"}\OperatorTok{]}
+\DataTypeTok{subject\_prefixes} \OperatorTok{=} \OperatorTok{[}\StringTok{"/tmp/"}\OperatorTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Detector Fields}\label{detector-fields}
+
+Top-level fields:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{id}: stable unique detector ID. Use lowercase words separated
+  by \texttt{-}.
+\item
+  \texttt{name}: human-readable name shown in the UI.
+\item
+  \texttt{description}: short reason this detector exists.
+\item
+  \texttt{severity}: \texttt{info}, \texttt{warning}, or
+  \texttt{critical}.
+\item
+  \texttt{tags}: list of strings for grouping and search.
+\item
+  \texttt{summary\_template}: detection summary. May reference event
+  fields with \texttt{\{field\}}.
+\item
+  \texttt{threshold\_count}: optional count needed before emitting a
+  detection.
+\item
+  \texttt{threshold\_window\_secs}: optional correlation window in
+  seconds.
+\item
+  \texttt{group\_by}: optional event fields used as the threshold
+  correlation key.
+\end{itemize}
+
+Match fields under \texttt{{[}match{]}}:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{event\_types}: event names such as \texttt{execve},
+  \texttt{file\_open}, \texttt{file\_write}, \texttt{ptrace},
+  \texttt{module\_load}, \texttt{socket\_connect},
+  \texttt{socket\_bind}, \texttt{setuid}, \texttt{mount}, \texttt{bpf}.
+\item
+  \texttt{actions}: \texttt{observe}, \texttt{allow}, or \texttt{block}.
+\item
+  \texttt{comm\_in}: exact process names from \texttt{comm}.
+\item
+  \texttt{comm\_prefixes}: process-name prefixes.
+\item
+  \texttt{subject\_prefixes}: path or subject prefixes.
+\item
+  \texttt{subject\_contains}: substrings in \texttt{subject}.
+\item
+  \texttt{dst\_ports}: destination or bind ports.
+\item
+  \texttt{dst\_ips}: destination IPv4 addresses.
+\item
+  \texttt{uids}: Linux UIDs.
+\item
+  \texttt{arg0\_in}: exact numeric \texttt{arg0} values.
+\item
+  \texttt{arg1\_in}: exact numeric \texttt{arg1} values.
+\end{itemize}
+
+All string matching is case-insensitive except \texttt{dst\_ips}.
+
+\section{Event Fields}\label{event-fields}
+
+Detectors can match or render these normalized fields:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{agent\_id}
+\item
+  \texttt{ts}
+\item
+  \texttt{event\_type}
+\item
+  \texttt{action}
+\item
+  \texttt{severity}
+\item
+  \texttt{pid}
+\item
+  \texttt{uid}
+\item
+  \texttt{comm}
+\item
+  \texttt{dst\_ip}
+\item
+  \texttt{dst\_port}
+\item
+  \texttt{subject}
+\item
+  \texttt{arg0}
+\item
+  \texttt{arg1}
+\item
+  \texttt{ppid}
+\item
+  \texttt{ancestry}
+\item
+  \texttt{process\_path}
+\item
+  \texttt{pid\_ns}
+\item
+  \texttt{mount\_ns}
+\item
+  \texttt{net\_ns}
+\end{itemize}
+
+\section{Threshold Detectors}\label{threshold-detectors}
+
+Use \texttt{threshold\_count}, \texttt{threshold\_window\_secs}, and
+\texttt{group\_by} when one event is too noisy.
+
+Example:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DataTypeTok{id} \OperatorTok{=} \StringTok{"repeated{-}bind{-}denials"}
+\DataTypeTok{name} \OperatorTok{=} \StringTok{"Repeated Bind Denials"}
+\DataTypeTok{description} \OperatorTok{=} \StringTok{"Flags repeated blocked bind attempts against the same port and process."}
+\DataTypeTok{severity} \OperatorTok{=} \StringTok{"critical"}
+\DataTypeTok{tags} \OperatorTok{=} \OperatorTok{[}\StringTok{"network"}\OperatorTok{,} \StringTok{"ips"}\OperatorTok{,} \StringTok{"threshold"}\OperatorTok{]}
+\DataTypeTok{threshold\_count} \OperatorTok{=} \DecValTok{3}
+\DataTypeTok{threshold\_window\_secs} \OperatorTok{=} \DecValTok{120}
+\DataTypeTok{group\_by} \OperatorTok{=} \OperatorTok{[}\StringTok{"agent\_id"}\OperatorTok{,} \StringTok{"comm"}\OperatorTok{,} \StringTok{"dst\_port"}\OperatorTok{]}
+\DataTypeTok{summary\_template} \OperatorTok{=} \StringTok{"\{comm\} hit \{match\_count\} blocked bind attempts on port \{dst\_port\} within 120s"}
+
+\KeywordTok{[match]}
+\DataTypeTok{event\_types} \OperatorTok{=} \OperatorTok{[}\StringTok{"socket\_bind"}\OperatorTok{]}
+\DataTypeTok{actions} \OperatorTok{=} \OperatorTok{[}\StringTok{"block"}\OperatorTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+This emits on the third matching event in the 120 second window for the
+same \texttt{agent\_id}, \texttt{comm}, and \texttt{dst\_port}.
+
+\section{Block Detectors}\label{block-detectors}
+
+LSM policy blocks are normal events with \texttt{action\ =\ "block"}.
+Detector examples:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DataTypeTok{id} \OperatorTok{=} \StringTok{"blocked{-}exec{-}path"}
+\DataTypeTok{name} \OperatorTok{=} \StringTok{"Blocked Exec Path"}
+\DataTypeTok{description} \OperatorTok{=} \StringTok{"Highlights execution denied by selected exec path policy."}
+\DataTypeTok{severity} \OperatorTok{=} \StringTok{"critical"}
+\DataTypeTok{tags} \OperatorTok{=} \OperatorTok{[}\StringTok{"execution"}\OperatorTok{,} \StringTok{"ips"}\OperatorTok{,} \StringTok{"lsm"}\OperatorTok{]}
+\DataTypeTok{summary\_template} \OperatorTok{=} \StringTok{"\{comm\} was blocked from executing \{subject\}"}
+
+\KeywordTok{[match]}
+\DataTypeTok{event\_types} \OperatorTok{=} \OperatorTok{[}\StringTok{"execve"}\OperatorTok{]}
+\DataTypeTok{actions} \OperatorTok{=} \OperatorTok{[}\StringTok{"block"}\OperatorTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DataTypeTok{id} \OperatorTok{=} \StringTok{"blocked{-}sensitive{-}write"}
+\DataTypeTok{name} \OperatorTok{=} \StringTok{"Blocked Sensitive Write"}
+\DataTypeTok{description} \OperatorTok{=} \StringTok{"Highlights denied writes to protected targets."}
+\DataTypeTok{severity} \OperatorTok{=} \StringTok{"critical"}
+\DataTypeTok{tags} \OperatorTok{=} \OperatorTok{[}\StringTok{"filesystem"}\OperatorTok{,} \StringTok{"ips"}\OperatorTok{,} \StringTok{"lsm"}\OperatorTok{]}
+\DataTypeTok{summary\_template} \OperatorTok{=} \StringTok{"\{comm\} was blocked from writing target \{subject\}"}
+
+\KeywordTok{[match]}
+\DataTypeTok{event\_types} \OperatorTok{=} \OperatorTok{[}\StringTok{"file\_write"}\OperatorTok{]}
+\DataTypeTok{actions} \OperatorTok{=} \OperatorTok{[}\StringTok{"block"}\OperatorTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Testing}\label{testing}
+
+List loaded detectors:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{curl} \AttributeTok{{-}s}\NormalTok{ http://127.0.0.1:8080/api/v1/detectors }\KeywordTok{|} \ExtensionTok{jq}
+\end{Highlighting}
+\end{Shaded}
+
+List detections:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{curl} \AttributeTok{{-}s}\NormalTok{ http://127.0.0.1:8080/api/v1/detections }\KeywordTok{|} \ExtensionTok{jq}
+\end{Highlighting}
+\end{Shaded}
+
+Run replay tests after adding detector fixtures:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{python3} \AttributeTok{{-}m}\NormalTok{ unittest tests.test\_replay}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Detector Limits}\label{detector-limits}
+
+Current detectors are single-event or simple threshold rules. They do
+not yet support:
+
+\begin{itemize}
+\tightlist
+\item
+  regex
+\item
+  negative matches
+\item
+  complex boolean logic
+\item
+  multi-stage sequence correlation
+\item
+  file hash matching
+\item
+  content scanning
+\end{itemize}
+
+Use agent or manager code changes for those features.
+
+\clearpage
+
+\chapter{Advanced Operations: Signature Antivirus with
+LSM}\label{advanced-operations-signature-antivirus-with-lsm}
+
+\begin{figure}[h]
+\centering
+\vspace{5cm}
+\caption{Illustration mapping the logical boundary of the Advanced Operations: Signature Antivirus with LSM implementation.}
+\end{figure}
+
+A simple signature-based antivirus is possible in this project, but the
+split matters:
+
+\begin{itemize}
+\tightlist
+\item
+  eBPF LSM is good at inline enforcement: allow or deny \texttt{exec},
+  \texttt{open}, \texttt{write}, \texttt{ptrace}, and similar
+  operations.
+\item
+  Userspace is the right place for signature scanning: hashing files,
+  reading file contents, parsing signature databases, and making richer
+  verdicts.
+\end{itemize}
+
+Do not try to build a full file-content scanner inside eBPF. BPF
+programs are bounded, cannot freely read whole files, and are not a good
+place for SHA/YARA-style work. Use BPF LSM to enforce verdicts that
+userspace has already computed.
+
+\section{Recommended Architecture}\label{recommended-architecture}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Agent observes file activity and execution attempts.
+\item
+  Agent or helper scanner hashes files in userspace.
+\item
+  Agent checks hashes against a local signature database.
+\item
+  Agent writes malicious verdicts into BPF maps.
+\item
+  LSM hooks block future matching execution or file access.
+\item
+  Agent forwards \texttt{malware\_detected} and block events to the
+  manager.
+\item
+  Manager stores detections and distributes signature updates.
+\end{enumerate}
+
+\section{Enforcement Keys}\label{enforcement-keys}
+
+Prefer stable file identity over path-only matching:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{dev}
+\item
+  \texttt{inode}
+\item
+  optional \texttt{ctime} or size
+\item
+  optional file hash
+\end{itemize}
+
+Path rules are useful for policy, but weak for antivirus because files
+can move, link, or be replaced.
+
+Good first implementation:
+
+\begin{itemize}
+\tightlist
+\item
+  Userspace scanner computes SHA-256.
+\item
+  Signature DB maps SHA-256 to malware name/severity.
+\item
+  Agent keeps a userspace cache:
+  \texttt{(dev,\ inode)\ -\textgreater{}\ verdict}.
+\item
+  Agent syncs blocked \texttt{(dev,\ inode)} keys into an eBPF map.
+\item
+  \texttt{bprm\_check\_security} blocks execution if
+  \texttt{(dev,\ inode)} is in the malicious map.
+\item
+  \texttt{file\_permission} can optionally block read or write for known
+  malicious files.
+\end{itemize}
+
+\section{Signature Database Shape}\label{signature-database-shape}
+
+Start simple:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{\{}
+  \DataTypeTok{"version"}\FunctionTok{:} \DecValTok{1}\FunctionTok{,}
+  \DataTypeTok{"updated\_at"}\FunctionTok{:} \StringTok{"2026{-}04{-}24T00:00:00Z"}\FunctionTok{,}
+  \DataTypeTok{"hashes"}\FunctionTok{:} \OtherTok{[}
+    \FunctionTok{\{}
+      \DataTypeTok{"sha256"}\FunctionTok{:} \StringTok{"0123456789abcdef..."}\FunctionTok{,}
+      \DataTypeTok{"name"}\FunctionTok{:} \StringTok{"EICAR{-}Test{-}File"}\FunctionTok{,}
+      \DataTypeTok{"severity"}\FunctionTok{:} \StringTok{"critical"}\FunctionTok{,}
+      \DataTypeTok{"action"}\FunctionTok{:} \StringTok{"block"}
+    \FunctionTok{\}}
+  \OtherTok{]}
+\FunctionTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+Manager can serve this as a policy endpoint later, for example:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{GET /api/v1/signatures}
+\end{Highlighting}
+\end{Shaded}
+
+Agent should cache the database locally so enforcement survives manager
+outages.
+
+\section{LSM Hooks To Use}\label{lsm-hooks-to-use}
+
+Useful hooks:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{bprm\_check\_security}: best first hook for blocking malicious
+  executable launches.
+\item
+  \texttt{file\_permission}: can block reads/writes after a file is
+  known malicious.
+\item
+  \texttt{inode\_create}, \texttt{inode\_rename},
+  \texttt{inode\_unlink}, \texttt{file\_open}: possible future hooks for
+  cache invalidation and quarantine workflows.
+\end{itemize}
+
+Best first milestone:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Scan on \texttt{execve} observation or before
+  \texttt{bprm\_check\_security} verdict is needed.
+\item
+  Cache clean/malicious file verdicts in userspace.
+\item
+  Block known-malicious \texttt{(dev,\ inode)} in
+  \texttt{bprm\_check\_security}.
+\end{enumerate}
+
+\section{Race Conditions}\label{race-conditions}
+
+Pure userspace scanning has a time-of-check/time-of-use risk:
+
+\begin{itemize}
+\tightlist
+\item
+  file is scanned clean
+\item
+  file content changes
+\item
+  file is executed before rescan
+\end{itemize}
+
+Reduce this with:
+
+\begin{itemize}
+\tightlist
+\item
+  cache key includes \texttt{mtime}, \texttt{ctime}, and size
+\item
+  invalidate cache on write events
+\item
+  rescan on first execution after write
+\item
+  block unknown execution until scan completes if strict mode is enabled
+\end{itemize}
+
+Strict mode is safer but can break usability if scanners are slow.
+
+\section{Scanner Options}\label{scanner-options}
+
+Minimal scanner:
+
+\begin{itemize}
+\tightlist
+\item
+  SHA-256 exact hash signatures
+\item
+  local JSON signature DB
+\item
+  verdict cache
+\item
+  BPF map sync for malicious file IDs
+\end{itemize}
+
+Better scanner:
+
+\begin{itemize}
+\tightlist
+\item
+  SHA-256 plus fuzzy hashes
+\item
+  YARA-compatible rules in userspace
+\item
+  quarantine metadata
+\item
+  allowlists for trusted paths/signers
+\item
+  per-agent signature policy from manager
+\end{itemize}
+
+\section{Event Types To Add}\label{event-types-to-add}
+
+Suggested manager event types:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{malware\_scan}: scan completed
+\item
+  \texttt{malware\_detected}: malicious signature matched
+\item
+  \texttt{malware\_block}: LSM blocked access to known malicious file
+\end{itemize}
+
+Useful event fields:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{subject}: path if available
+\item
+  \texttt{arg0}: signature database version or scanner verdict code
+\item
+  \texttt{arg1}: file size or signature rule ID if numeric
+\item
+  \texttt{process\_path}: process that touched the file
+\item
+  additional raw JSON fields: \texttt{sha256}, \texttt{signature\_name},
+  \texttt{file\_dev}, \texttt{file\_inode}
+\end{itemize}
+
+\section{Practical Next Step}\label{practical-next-step}
+
+Build exact-hash blocking first:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Add a manager signature DB endpoint or local agent signature file.
+\item
+  Add agent userspace SHA-256 scanner and verdict cache.
+\item
+  Add BPF map keyed by \texttt{(dev,\ inode)} for malicious files.
+\item
+  Add \texttt{bprm\_check\_security} enforcement against that map.
+\item
+  Emit \texttt{malware\_detected} and \texttt{malware\_block} events.
+\item
+  Add TOML detectors for those event types.
+\end{enumerate}
+
+This gives antivirus-like blocking while keeping BPF small and reliable.
+
+\clearpage
+
+\chapter{Future Roadmap \& Extension
+Plan}\label{future-roadmap-extension-plan}
+
+\begin{figure}[h]
+\centering
+\vspace{5cm}
+\caption{Illustration mapping the logical boundary of the Future Roadmap & Extension Plan implementation.}
+\end{figure}
+
+This is the next-phase plan for KShield after the detector engine and
+expanded LSM policy work now in the repo.
+
+\section{Phase 1: Completed in This
+Iteration}\label{phase-1-completed-in-this-iteration}
+
+\begin{itemize}
+\tightlist
+\item
+  Add a universal detector definition format using TOML.
+\item
+  Persist detector hits separately from raw events.
+\item
+  Expand telemetry beyond \texttt{execve} into file access, ptrace, and
+  module load attempts.
+\item
+  Expand LSM enforcement beyond \texttt{socket\_connect} into
+  \texttt{socket\_bind}.
+\item
+  Surface detector hits and detector inventory in the dashboard.
+\end{itemize}
+
+\section{Phase 2: Kernel Telemetry
+Expansion}\label{phase-2-kernel-telemetry-expansion}
+
+\begin{itemize}
+\tightlist
+\item
+  Add process ancestry and parent PID to event payloads.
+\item
+  Add \texttt{setuid}, \texttt{mount}, and \texttt{bpf} syscall
+  visibility.
+\item
+  Capture richer file metadata for sensitive paths.
+\item
+  Add optional container and namespace context when available.
+\end{itemize}
+
+\section{Phase 3: Detector Semantics}\label{phase-3-detector-semantics}
+
+\begin{itemize}
+\tightlist
+\item
+  Support multi-event correlation windows, not just single-event
+  matches.
+\item
+  Add threshold detectors such as repeated failed binds or bursty ptrace
+  attempts.
+\item
+  Add allowlists and suppression rules per detector.
+\item
+  Add detector test fixtures and offline replay of saved event streams.
+\end{itemize}
+
+\section{Phase 4: Enforcement}\label{phase-4-enforcement}
+
+\begin{itemize}
+\tightlist
+\item
+  Add executable deny rules for selected paths or hashes.
+\item
+  Add sensitive-file write protection.
+\item
+  Add optional ptrace deny rules.
+\item
+  Add scoped policy application per agent rather than global policy
+  only.
+\end{itemize}
+
+\section{Phase 5: Operations and UX}\label{phase-5-operations-and-ux}
+
+\begin{itemize}
+\tightlist
+\item
+  Turn the manager into a persistent systemd service on the host.
+\item
+  Add dashboard filters for detector ID, severity, and agent.
+\item
+  Add event-to-detection linking in the UI.
+\item
+  Add export endpoints for JSON and CSV.
+\item
+  Add health and lag indicators for detector reloads and policy syncs.
+\end{itemize}
+
+\clearpage
+
+\end{document}

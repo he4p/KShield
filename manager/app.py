@@ -1018,7 +1018,7 @@ class AppHandler(BaseHTTPRequestHandler):
             return True
         
         self.send_response(HTTPStatus.UNAUTHORIZED)
-        self.send_header("WWW-Authenticate", 'Basic realm="Unified Shield"')
+        self.send_header("WWW-Authenticate", 'Basic realm="Ataree"')
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         self.wfile.write(b'{"error": "unauthorized"}')

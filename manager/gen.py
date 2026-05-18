@@ -1,7 +1,7 @@
 import os
 import tomllib
 
-out = ["# Current Detectors\n\nHere are all the out-of-the-box detectors available in Unified Shield:\n"]
+out = ["# Current Detectors\n\nHere are all the out-of-the-box detectors available in Ataree:\n"]
 detectors_dir = "detectors"
 
 for f in sorted(os.listdir(detectors_dir)):

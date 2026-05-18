@@ -1,32 +1,33 @@
 # Extensibility Guide
 
-Unified Shield is designed from the ground up to be fully extensible with minimal friction. This guide illustrates how you can extend the platform to detect novel threats.
+Ataree is designed from the ground up to be fully extensible with minimal friction. This guide illustrates how you can extend the platform to detect novel threats.
 
-## 1. Modifying the eBPF Agent
+## 1. Zero-Compile Exploit Detection
 
-The agent is responsible for executing eBPF code directly in the Linux Kernel context to capture raw telemetry. 
+Unlike traditional kernel models that require complex re-compilation targeting specific kernel headers to identify new exploits, **Ataree** allows rapid, declarative `.toml` syntax matchers.
 
-### Adding a New eBPF Hook
+When the agent intercepts activity (like `sys_enter_pidfd_getfd` or `esp_input`), it streams it immediately to the backend Manager pipeline.
 
-1. **Locate `kshield.bpf.c`**: Add your eBPF programs (e.g. `SEC("tracepoint/...")` or `SEC("kprobe/...")`) here.
-2. **Define the Event Kind**: Provide an `EVENT_KIND_<NAME>` integer enum in `kshield.bpf.c`.
-3. **Emit the Event**: Use `fill_common(&evt, EVENT_KIND_<NAME>, EVENT_ACTION_OBSERVE);` and emit with `bpf_ringbuf_output`.
+### The Detector Pipeline
 
 ```mermaid
-graph LR
-    A[Linux Kernel] -->|kprobe / tracepoint| B[kshield.bpf.c]
-    B -->|bpf_ringbuf_output| C[main.rs]
+graph TD
+    A[Attack/Exploit Trigger] --> B(eBPF Tracepoint)
+    B --> C(BPF Ring Buffer)
+    C --> D[Ataree Rust Agent]
+    D -- REST POST --> E[Ataree Python Manager]
+    E --> F{TOML Detectors Engine}
+    F -- Match --> G[Triggered Detections Table]
+    F -- Clean --> H[Normal Telemetry Stream]
 ```
 
-### Parsing in Rust (`main.rs`)
-
-1. Identify the new `EVENT_KIND_` in the Rust enum parsing section.
+## 2. Authoring a New Detector
+The Ataree manager dynamically loads `.toml` detector files from the `manager/detectors/` directory.
 2. Map it to a human-readable string inside `convert_event()` (e.g., `"my_new_event"`).
 3. Rebuild the agent using `bash scripts/build_agent.sh`.
 
 ---
 
-## 2. Adding Manager Detectors (Rules)
 
 The Unified Shield manager dynamically loads `.toml` detector files from the `manager/detectors/` directory.
 

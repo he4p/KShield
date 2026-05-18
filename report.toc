@@ -1,0 +1,53 @@
+\contentsline {chapter}{\numberline {1}Introduction \& Core Overview}{3}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Overview}{3}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Core Features}{4}{section.1.2}%
+\contentsline {chapter}{\numberline {2}System Architecture}{5}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Manager}{5}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Agent}{6}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Event Flow}{6}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Policy Flow}{7}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Detector Flow}{7}{section.2.5}%
+\contentsline {chapter}{\numberline {3}Security Dashboard \& Controller API Reference}{8}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Agent \& Event Ingestion}{8}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}\texttt {POST\ /api/v1/agents/register}}{8}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}\texttt {POST\ /api/v1/events}}{9}{subsection.3.1.2}%
+\contentsline {section}{\numberline {3.2}Dashboard Data}{9}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}\texttt {GET\ /api/v1/metrics/summary}}{9}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}\texttt {GET\ /api/v1/agents}}{9}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}\texttt {GET\ /api/v1/events}}{9}{subsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.2.4}\texttt {GET\ /api/v1/detections}}{9}{subsection.3.2.4}%
+\contentsline {subsection}{\numberline {3.2.5}\texttt {GET\ /api/v1/detectors}}{9}{subsection.3.2.5}%
+\contentsline {section}{\numberline {3.3}Policy \& LSM Enforcement}{9}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}\texttt {GET\ /api/v1/policy}}{9}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}\texttt {GET\ /api/v1/policy/\{agent\_id\}}}{10}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Modifying Policies}{10}{subsection.3.3.3}%
+\contentsline {chapter}{\numberline {4}Out-of-the-Box Protection: Preloaded Detectors}{11}{chapter.4}%
+\contentsline {chapter}{\numberline {5}Extensibility Guide: Writing Custom Rules}{13}{chapter.5}%
+\contentsline {section}{\numberline {5.1}1. Zero-Compile Exploit Detection}{13}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}The Detector Pipeline}{13}{subsection.5.1.1}%
+\contentsline {section}{\numberline {5.2}2. Authoring a New Detector}{14}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Detector Structure}{14}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Real-Time Loading}{14}{subsection.5.2.2}%
+\contentsline {chapter}{\numberline {6}Detector Engine Capabilities \& Syntax}{15}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Quick Start}{15}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Detector Fields}{16}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Event Fields}{16}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Threshold Detectors}{17}{section.6.4}%
+\contentsline {section}{\numberline {6.5}Block Detectors}{17}{section.6.5}%
+\contentsline {section}{\numberline {6.6}Testing}{18}{section.6.6}%
+\contentsline {section}{\numberline {6.7}Detector Limits}{18}{section.6.7}%
+\contentsline {chapter}{\numberline {7}Advanced Operations: Signature Antivirus with LSM}{20}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Recommended Architecture}{20}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Enforcement Keys}{21}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Signature Database Shape}{21}{section.7.3}%
+\contentsline {section}{\numberline {7.4}LSM Hooks To Use}{22}{section.7.4}%
+\contentsline {section}{\numberline {7.5}Race Conditions}{22}{section.7.5}%
+\contentsline {section}{\numberline {7.6}Scanner Options}{22}{section.7.6}%
+\contentsline {section}{\numberline {7.7}Event Types To Add}{23}{section.7.7}%
+\contentsline {section}{\numberline {7.8}Practical Next Step}{23}{section.7.8}%
+\contentsline {chapter}{\numberline {8}Future Roadmap \& Extension Plan}{24}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Phase 1: Completed in This Iteration}{24}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Phase 2: Kernel Telemetry Expansion}{24}{section.8.2}%
+\contentsline {section}{\numberline {8.3}Phase 3: Detector Semantics}{25}{section.8.3}%
+\contentsline {section}{\numberline {8.4}Phase 4: Enforcement}{25}{section.8.4}%
+\contentsline {section}{\numberline {8.5}Phase 5: Operations and UX}{25}{section.8.5}%

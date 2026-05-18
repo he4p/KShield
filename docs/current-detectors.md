@@ -1,6 +1,6 @@
 # Current Detectors
 
-Here are all the out-of-the-box detectors available in Unified Shield:
+Here are all the out-of-the-box detectors available in Ataree:
 
 - **Blocked Bind Port**: Highlights bind attempts denied by port policy.
 - **Blocked Egress Connection**: Highlights outbound network connections blocked by policy.

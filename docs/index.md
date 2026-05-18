@@ -1,12 +1,12 @@
-# Unified Shield
+# Ataree
 
-**Unified Shield** is a Linux runtime security project built using eBPF, combining the robustness of the KShield telemetry manager and agent with modern documentation and UI methodologies.
+**Ataree** is a Linux runtime security project built using eBPF, combining the robustness of the KShield telemetry manager and agent with modern documentation and UI methodologies.
 
 It observes kernel activity in real time and streams structured events securely to an IPS Control Plane (Manager) for inspection, filtering, analysis, and active enforcement via LSM hooks.
 
 ## Overview
 
-At its core, Unified Shield uses:
+At its core, Ataree uses:
 
 - **eBPF Agent (Rust)**: BPF programs tracing `sys_enter_*`, `esp_input`, and other core kernel tracepoints, effectively mapping raw kernel state to telemetry structures.
 - **Python Manager**: A fast backend server ingesting streams of telemetry over a REST API and correlating them with runtime `.toml` detectors.
