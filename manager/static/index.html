@@ -70,10 +70,10 @@
         <label class="toolbar-field select-field">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
           <select id="time-range">
+            <option value="0">All time</option>
             <option value="24">Last 24 hours</option>
             <option value="168">Last 7 days</option>
             <option value="720">Last 30 days</option>
-            <option value="0">All time</option>
           </select>
         </label>
         <span class="topbar-chip" id="topbar-events">0 events</span>
@@ -115,8 +115,23 @@
         </section>
 
         <section class="panel" id="dash-detections-panel">
-          <div class="panel-header"><div><p class="eyebrow">Detections</p><h2>Recent Detector Hits</h2></div><span class="panel-chip" id="detector-chip">0 hits</span></div>
+          <div class="panel-header"><div><p class="eyebrow">Detections</p><h2>Recent Detector Hits</h2></div>
+            <div class="detections-toolbar">
+              <select id="detections-severity-filter" class="toolbar-select">
+                <option value="">All Severities</option>
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="critical">Critical</option>
+              </select>
+              <span class="panel-chip" id="detector-chip">0 hits</span>
+            </div>
+          </div>
           <div class="table-wrap"><table id="detections-table"><thead><tr><th>Timestamp</th><th>Detector</th><th>Severity</th><th>Agent</th><th>Event</th><th>Summary</th></tr></thead><tbody></tbody></table></div>
+          <div class="detections-pagination">
+            <button id="detections-prev" class="action-btn" disabled>Previous</button>
+            <span id="detections-page-info">0–0 of 0</span>
+            <button id="detections-next" class="action-btn" disabled>Next</button>
+          </div>
         </section>
       </section>
 

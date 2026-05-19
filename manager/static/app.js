@@ -1,7 +1,7 @@
 const state = {
   page: "dashboard",
   search: "",
-  rangeHours: 24,
+  rangeHours: 0,
   summary: null,
   agents: [],
   events: [],
@@ -16,6 +16,10 @@ const state = {
   agentToken: "",
   agentMetrics: [],
   benchmarks: null,
+  detectionsOffset: 0,
+  detectionsTotal: 0,
+  detectionsPageSize: 30,
+  detectionsSeverity: "",
 };
 
 /* ---- util ---- */
@@ -171,13 +175,22 @@ function renderEventsPage(items, detectionEventIds) {
 function renderDetections(items) {
   const tbody = document.querySelector("#detections-table tbody");
   tbody.innerHTML = "";
-  if (!items.length) { tbody.appendChild(emptyRow(6, "No detectors fired", "Trigger activity on an agent or load more detector definitions.")); return; }
+  if (!items.length) { tbody.appendChild(emptyRow(6, "No detectors fired", "Trigger activity on an agent or load more detector definitions.")); }
+
   for (const hit of items) {
     const tr = document.createElement("tr");
     tr.dataset.detectionId = String(hit.id);
     tr.innerHTML = `<td class="subtle">${esc(formatTs(hit.ts))}</td><td><div class="stacked-cell"><strong>${esc(hit.detector_name)}</strong><span class="subtle mono">${esc(hit.detector_id)}</span></div></td><td><span class="pill ${severityClass(hit.severity)}">${esc(hit.severity)}</span></td><td class="mono">${esc(hit.agent_id)}</td><td><div class="stacked-cell"><span>${esc(hit.event_type)}</span><span class="subtle">${esc(hit.action)}</span></div></td><td><div class="stacked-cell"><strong>${esc(hit.summary)}</strong><span class="subtle">${actionClass(hit.action) === "block" ? "Enforced" : "Observed"}</span></div></td>`;
     tbody.appendChild(tr);
   }
+
+  // Pagination controls
+  const total = state.detectionsTotal;
+  const start = total ? state.detectionsOffset + 1 : 0;
+  const end = Math.min(state.detectionsOffset + state.detectionsPageSize, total);
+  setText("detections-page-info", `${formatNumber(start)}\u2013${formatNumber(end)} of ${formatNumber(total)}`);
+  document.getElementById("detections-prev").disabled = state.detectionsOffset <= 0;
+  document.getElementById("detections-next").disabled = state.detectionsOffset + state.detectionsPageSize >= total;
 }
 
 /* ---- render: policy ---- */
@@ -327,7 +340,7 @@ function renderSummary() {
   setText("events-meta", `${scopeLabel} • ${formatNumber(state.summary?.total_events || 0)} stored`);
   setText("blocked-meta", blocked ? `${blocked} blocked` : "No blocks");
   setText("detections-meta", `${formatNumber(state.detectors.length)} detectors`);
-  setText("detector-chip", `${formatNumber(filterDetections(state.detections).length)} hits`);
+  setText("detector-chip", `${formatNumber(state.detectionsTotal)} total`);
   setText("catalog-chip-page", `${formatNumber(state.detectors.length)} loaded`);
   setText("agents-fleet-chip", `${formatNumber(agents.length)} agents`);
   setText("events-page-chip", `${formatNumber(events.length)} events`);
@@ -368,20 +381,28 @@ async function refresh() {
   const hoursParam = hours ? `&hours=${hours}` : "";
   const limit = hours ? "5000" : "200";
 
-  const [summary, agents, events, detections, detectors, policy, tokenRes] = await Promise.all([
+  const detFilter = state.detectionsSeverity ? `&severity=${state.detectionsSeverity}` : "";
+  const detUrl = `/api/v1/detections?limit=${state.detectionsPageSize}&offset=${state.detectionsOffset}${hoursParam}${detFilter}`;
+
+  const [summary, agents, events, detectionsRes, detectors, policy, tokenRes, benchmarksRes, metricsRes] = await Promise.all([
     fetchJson("/api/v1/metrics/summary"),
     fetchJson("/api/v1/agents"),
     fetchJson(`/api/v1/events?limit=${limit}${hoursParam}`),
-    fetchJson(`/api/v1/detections?limit=${limit}${hoursParam}`),
+    fetchJson(detUrl),
     fetchJson("/api/v1/detectors"),
     fetchJson("/api/v1/policy"),
     fetchJson("/api/v1/agent-token").catch(() => ({ agent_token: "" })),
+    fetchJson("/api/v1/benchmarks").catch(() => null),
+    fetchJson("/api/v1/agent-metrics").catch(() => ({ items: [] })),
   ]);
   state.summary = summary;
   state.agents = agents.items || [];
   state.events = events.items || [];
-  state.detections = detections.items || [];
+  state.detections = detectionsRes.items || [];
+  state.detectionsTotal = detectionsRes.total || 0;
   state.detectors = detectors.items || [];
+  state.benchmarks = benchmarksRes;
+  state.agentMetrics = metricsRes.items || [];
   state.blockedIpv4 = policy.blocked_ipv4_items || [];
   state.blockedBindPorts = policy.blocked_bind_port_items || [];
   state.blockedExecPaths = policy.blocked_exec_path_items || [];
@@ -390,24 +411,15 @@ async function refresh() {
   state.agentToken = tokenRes.agent_token || "";
   if (state.selectedDetectionId && !state.detections.some(i => String(i.id) === String(state.selectedDetectionId))) state.selectedDetectionId = null;
   
-  if (state.page === "performance") {
-    const metricsRes = await fetchJson("/api/v1/agent-metrics");
-    state.agentMetrics = metricsRes.items || [];
-    // Fetch history for each agent
-    for (const agent of state.agents) {
-      const histRes = await fetchJson(`/api/v1/agent-metrics?agent_id=${agent.id}`);
-      agent._metricsHistory = (histRes.items || []).reverse();
-    }
-  } else {
-    state.agentMetrics = [];
-  }
-
-  if (state.page === "benchmarks") {
-    state.benchmarks = await fetchJson("/api/v1/benchmarks");
-  }
-  
   applyState();
   buildInstallCommand();
+
+  // Background: fetch per-agent history for performance sparklines
+  for (const agent of state.agents) {
+    fetchJson(`/api/v1/agent-metrics?agent_id=${agent.id}`).then(histRes => {
+      agent._metricsHistory = (histRes.items || []).reverse();
+    }).catch(() => {});
+  }
 }
 
 /* ---- policy API ---- */
@@ -639,6 +651,26 @@ if (agentsTabs) {
   document.querySelectorAll(".agents-tab-panel").forEach(p => p.classList.toggle("active", p.id === `agents-tab-${tabName}`));
   });
 }
+
+/* ---- detection drawer ---- */
+
+document.getElementById("detections-severity-filter").addEventListener("change", e => {
+  state.detectionsSeverity = e.target.value;
+  state.detectionsOffset = 0;
+  refresh();
+});
+
+document.getElementById("detections-prev").addEventListener("click", () => {
+  state.detectionsOffset = Math.max(0, state.detectionsOffset - state.detectionsPageSize);
+  refresh();
+});
+
+document.getElementById("detections-next").addEventListener("click", () => {
+  if (state.detectionsOffset + state.detectionsPageSize < state.detectionsTotal) {
+    state.detectionsOffset += state.detectionsPageSize;
+    refresh();
+  }
+});
 
 /* ---- detection drawer ---- */
 

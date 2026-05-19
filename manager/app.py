@@ -274,6 +274,8 @@ class Storage:
 
                 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts DESC);
                 CREATE INDEX IF NOT EXISTS idx_events_agent ON events(agent_id);
+                CREATE INDEX IF NOT EXISTS idx_events_action ON events(action);
+                CREATE INDEX IF NOT EXISTS idx_events_severity ON events(severity);
 
                 CREATE TABLE IF NOT EXISTS detections (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -727,31 +729,29 @@ class Storage:
                 ).fetchall()
         return [dict(row) for row in rows]
 
-    def list_detections(self, limit: int = 200, hours: float = 0) -> list[dict[str, Any]]:
+    def list_detections(self, limit: int = 200, hours: float = 0, offset: int = 0, severity: str = "") -> tuple[list[dict[str, Any]], int]:
         limit = max(1, min(limit, 5000))
+        offset = max(0, offset)
         with self.lock:
+            where = ""
+            params: list[Any] = []
             if hours > 0:
                 cutoff = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
-                rows = self.conn.execute(
-                    """
-                    SELECT id, detector_id, detector_name, severity, ts, event_id, agent_id, event_type, action, subject, match_count, correlation_key, summary
-                    FROM detections WHERE ts >= ?
-                    ORDER BY id DESC
-                    LIMIT ?
-                    """,
-                    (cutoff, limit),
-                ).fetchall()
-            else:
-                rows = self.conn.execute(
-                    """
-                    SELECT id, detector_id, detector_name, severity, ts, event_id, agent_id, event_type, action, subject, match_count, correlation_key, summary
-                    FROM detections
-                    ORDER BY id DESC
-                    LIMIT ?
-                    """,
-                    (limit,),
-                ).fetchall()
-        return [dict(row) for row in rows]
+                where += "WHERE ts >= ?"
+                params.append(cutoff)
+            if severity:
+                prefix = "AND" if where else "WHERE"
+                where += f" {prefix} severity = ?"
+                params.append(severity)
+
+            count_row = self.conn.execute(f"SELECT COUNT(*) FROM detections {where}", params).fetchone()
+            total = as_int(count_row[0]) if count_row else 0
+
+            rows = self.conn.execute(
+                f"SELECT id, detector_id, detector_name, severity, ts, event_id, agent_id, event_type, action, subject, match_count, correlation_key, summary FROM detections {where} ORDER BY id DESC LIMIT ? OFFSET ?",
+                params + [limit, offset],
+            ).fetchall()
+        return [dict(row) for row in rows], total
 
     def list_detectors(self) -> list[dict[str, Any]]:
         detectors = self.detectors.list()
@@ -781,7 +781,7 @@ class Storage:
     def summary(self) -> dict[str, Any]:
         loaded_detectors = self.detectors.list()
         with self.lock:
-            total_events = as_int(self.conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+            total_events = as_int(self.conn.execute("SELECT MAX(id) FROM events").fetchone()[0])
             total_agents = as_int(self.conn.execute("SELECT COUNT(*) FROM agents").fetchone()[0])
             blocked_events = as_int(
                 self.conn.execute(
@@ -789,7 +789,7 @@ class Storage:
                 ).fetchone()[0]
             )
             total_detections = as_int(
-                self.conn.execute("SELECT COUNT(*) FROM detections").fetchone()[0]
+                self.conn.execute("SELECT MAX(id) FROM detections").fetchone()[0]
             )
             by_severity = {
                 str(row["severity"]): as_int(row["count"])
@@ -1239,8 +1239,11 @@ class AppHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/v1/detections":
             limit = as_int(query.get("limit", ["200"])[0], 200)
+            offset = as_int(query.get("offset", ["0"])[0], 0)
             hours = float(query.get("hours", ["0"])[0])
-            self._json(HTTPStatus.OK, {"items": self.app.storage.list_detections(limit=limit, hours=hours)})
+            severity = as_str(query.get("severity", [""])[0])
+            items, total = self.app.storage.list_detections(limit=limit, hours=hours, offset=offset, severity=severity)
+            self._json(HTTPStatus.OK, {"items": items, "total": total, "limit": limit, "offset": offset})
             return
         if path == "/api/v1/detectors":
             self._json(HTTPStatus.OK, {"items": self.app.storage.list_detectors()})
