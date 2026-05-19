@@ -1,0 +1,18 @@
+id = "impair-command-history"
+name = "Impair Command History Logging"
+description = "Flags access to shell command history files commonly cleared to reduce forensic visibility."
+severity = "warning"
+tags = ["defense-evasion", "impair-defenses", "command-history", "t1562.003"]
+summary_template = "{comm} touched command history {subject}"
+
+[match]
+event_types = ["file_open", "file_write"]
+subject_contains = [
+  ".bash_history",
+  ".zsh_history",
+  ".history",
+  ".ksh_history",
+  ".sh_history",
+  ".tcsh_history",
+  ".fish_history"
+]

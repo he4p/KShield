@@ -1,0 +1,42 @@
+id = "disable-modify-tools"
+name = "Disable or Modify Security Tools"
+description = "Flags direct tampering with common Linux security and monitoring tools."
+severity = "critical"
+tags = ["defense-evasion", "impair-defenses", "security-tools", "t1562.001"]
+summary_template = "{comm} touched security tooling {subject}"
+
+[match]
+event_types = ["execve", "file_open", "file_write"]
+subject_prefixes = [
+  "/sbin/auditctl",
+  "/usr/sbin/auditctl",
+  "/usr/bin/auditctl",
+  "/sbin/auditd",
+  "/usr/sbin/auditd",
+  "/usr/bin/auditd",
+  "/usr/sbin/ausearch",
+  "/usr/bin/ausearch",
+  "/usr/sbin/aureport",
+  "/usr/bin/aureport",
+  "/sbin/iptables",
+  "/usr/sbin/iptables",
+  "/usr/bin/iptables",
+  "/sbin/ip6tables",
+  "/usr/sbin/ip6tables",
+  "/usr/bin/ip6tables",
+  "/sbin/nft",
+  "/usr/sbin/nft",
+  "/usr/bin/nft",
+  "/usr/sbin/ufw",
+  "/usr/bin/ufw",
+  "/usr/sbin/firewalld",
+  "/usr/bin/firewalld",
+  "/usr/sbin/sysctl",
+  "/usr/bin/sysctl",
+  "/etc/audit",
+  "/etc/iptables",
+  "/etc/ufw",
+  "/etc/firewalld",
+  "/etc/sysctl.conf",
+  "/etc/sysctl.d"
+]

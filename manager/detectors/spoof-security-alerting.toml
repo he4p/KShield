@@ -1,0 +1,22 @@
+id = "spoof-security-alerting"
+name = "Spoof Security Alerting"
+description = "Flags access to local logging sockets, log files, and alerting configuration used to spoof or suppress alerts."
+severity = "warning"
+tags = ["defense-evasion", "impair-defenses", "alerting", "t1562.011"]
+summary_template = "{comm} touched alerting surface {subject}"
+
+[match]
+event_types = ["file_open", "file_write"]
+subject_prefixes = [
+  "/dev/log",
+  "/run/systemd/journal/socket",
+  "/var/log/syslog",
+  "/var/log/messages",
+  "/var/log/secure",
+  "/var/log/auth.log",
+  "/var/log/kern.log",
+  "/var/log/journal",
+  "/etc/rsyslog.conf",
+  "/etc/rsyslog.d",
+  "/etc/syslog-ng"
+]
