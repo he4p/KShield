@@ -19,5 +19,12 @@
             return response;
         });
     };
-})();
 
+    const logoutButton = document.getElementById("logout-button");
+    if (logoutButton) {
+        logoutButton.addEventListener("click", () => {
+            localStorage.removeItem("auth_credentials");
+            window.location.replace("/login");
+        });
+    }
+})();

@@ -49,11 +49,12 @@
           </select>
         </label>
 
-        <button class="profile-button" type="button" aria-label="Operator profile">
+        <button id="logout-button" class="profile-button" type="button" aria-label="Logout" title="Logout">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
             stroke-linejoin="round" aria-hidden="true">
-            <path d="M20 21a8 8 0 0 0-16 0"></path>
-            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <path d="m16 17 5-5-5-5"></path>
+            <path d="M21 12H9"></path>
           </svg>
         </button>
       </div>
@@ -400,31 +401,8 @@
     </div>
   </template>
 
-  <script src="/app.js">
-    // Check authentication before anything else
-(function() {
-    const savedCreds = localStorage.getItem('auth_credentials');
-    if (!savedCreds) {
-        window.location.href = '/login';
-        return;
-    }
-    
-    // Add auth header to all fetch requests
-    const originalFetch = window.fetch;
-    window.fetch = function(url, options = {}) {
-        options.headers = options.headers || {};
-        options.headers['Authorization'] = `Basic ${savedCreds}`;
-        return originalFetch(url, options).then(response => {
-            if (response.status === 401) {
-                localStorage.removeItem('auth_credentials');
-                window.location.href = '/login';
-                throw new Error('Unauthorized');
-            }
-            return response;
-        });
-    };
-})();
-  </script>
+  <script src="/auth.js"></script>
+  <script src="/app.js"></script>
 </body>
 
 </html>
