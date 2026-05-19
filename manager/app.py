@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import secrets
 import sqlite3
 import threading
 import tomllib
@@ -16,6 +17,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
+
+# Session store
+sessions = {}  # token -> expiry
 
 
 def now_iso() -> str:
@@ -1006,49 +1010,11 @@ class AppHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def _check_auth(self, path: str) -> bool:
-        if path == "/healthz":
-            return True
-        if path == "/login":
-            return True
-        if path == "/auth.js":
-            return True
-        if path == "/api/v1/agents/register":  # ADD THIS LINE
-            return True
-
-        auth = self.headers.get("Authorization")
-        if auth and auth.startswith("Basic "):
-            try:
-                import base64
-                decoded = base64.b64decode(auth[6:]).decode('utf-8')
-                username, password = decoded.split(':', 1)
-                if username == "admin" and password == "secret":
-                    return True
-            except Exception:
-                pass
-
-        if path.startswith("/api/"):
-            self.send_response(HTTPStatus.UNAUTHORIZED)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(b'{"error": "unauthorized"}')
-            return False
-
-        self.send_response(HTTPStatus.FOUND)
-        self.send_header("Location", "/login")
-        self.end_headers()
-        return False
-
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path = parsed.path
-        if not self._check_auth(path):
-            return
-        query = parse_qs(parsed.query)
-
-        if path == "/healthz":
-            self._json(HTTPStatus.OK, {"status": "ok", "ts": now_iso()})
-            return
+        
+        # Serve static files without auth
         if path == "/login":
             self._serve_file(self.app.config.static_dir / "login.html", "text/html; charset=utf-8")
             return
@@ -1061,65 +1027,133 @@ class AppHandler(BaseHTTPRequestHandler):
         if path == "/app.js":
             self._serve_file(self.app.config.static_dir / "app.js", "application/javascript; charset=utf-8")
             return
-        if path == "/auth.js":
-            self._serve_file(self.app.config.static_dir / "auth.js", "application/javascript; charset=utf-8")
+        
+        # Check auth for API calls
+        if path.startswith("/api/"):
+            # Check session
+            session_token = None
+            cookie_header = self.headers.get("Cookie", "")
+            for cookie in cookie_header.split(";"):
+                cookie = cookie.strip()
+                if cookie.startswith("session="):
+                    session_token = cookie[8:]
+                    break
+            
+            if session_token and session_token in sessions:
+                if sessions[session_token] > datetime.now(timezone.utc):
+                    # Session is valid, proceed with API call
+                    pass
+                else:
+                    del sessions[session_token]
+                    self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                    return
+            else:
+                self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                return
+            
+            # Process API requests
+            query = parse_qs(parsed.query)
+            
+            if path == "/api/v1/agents":
+                self._json(HTTPStatus.OK, {"items": self.app.storage.list_agents()})
+                return
+            if path == "/api/v1/events":
+                limit = as_int(query.get("limit", ["200"])[0], 200)
+                self._json(HTTPStatus.OK, {"items": self.app.storage.list_events(limit=limit)})
+                return
+            if path == "/api/v1/detections":
+                limit = as_int(query.get("limit", ["200"])[0], 200)
+                self._json(HTTPStatus.OK, {"items": self.app.storage.list_detections(limit=limit)})
+                return
+            if path == "/api/v1/detectors":
+                self._json(HTTPStatus.OK, {"items": self.app.storage.list_detectors()})
+                return
+            if path == "/api/v1/metrics/summary":
+                self._json(HTTPStatus.OK, self.app.storage.summary())
+                return
+            if path == "/api/v1/policy":
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
+                        "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
+                        "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
+                        "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
+                        "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True),
+                        "blocked_exec_path_items": self.app.storage.list_blocked_exec_path_entries(),
+                        "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True),
+                        "protected_write_target_items": self.app.storage.list_protected_write_target_entries(),
+                        "deny_ptrace": self.app.storage.ptrace_denied(),
+                        "ptrace_deny_items": self.app.storage.list_ptrace_deny_entries(),
+                    },
+                )
+                return
+            if path.startswith("/api/v1/policy/"):
+                agent_id = path.rsplit("/", 1)[-1]
+                self.app.storage.heartbeat(agent_id)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True, agent_scope=agent_id),
+                        "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True, agent_scope=agent_id),
+                        "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True, agent_scope=agent_id),
+                        "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True, agent_scope=agent_id),
+                        "deny_ptrace": self.app.storage.ptrace_denied(agent_scope=agent_id),
+                    },
+                )
+                return
+            
+            self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
             return
-
-        if path == "/api/v1/agents":
-            self._json(HTTPStatus.OK, {"items": self.app.storage.list_agents()})
-            return
-        if path == "/api/v1/events":
-            limit = as_int(query.get("limit", ["200"])[0], 200)
-            self._json(HTTPStatus.OK, {"items": self.app.storage.list_events(limit=limit)})
-            return
-        if path == "/api/v1/detections":
-            limit = as_int(query.get("limit", ["200"])[0], 200)
-            self._json(HTTPStatus.OK, {"items": self.app.storage.list_detections(limit=limit)})
-            return
-        if path == "/api/v1/detectors":
-            self._json(HTTPStatus.OK, {"items": self.app.storage.list_detectors()})
-            return
-        if path == "/api/v1/metrics/summary":
-            self._json(HTTPStatus.OK, self.app.storage.summary())
-            return
-        if path == "/api/v1/policy":
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
-                    "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
-                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
-                    "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
-                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True),
-                    "blocked_exec_path_items": self.app.storage.list_blocked_exec_path_entries(),
-                    "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True),
-                    "protected_write_target_items": self.app.storage.list_protected_write_target_entries(),
-                    "deny_ptrace": self.app.storage.ptrace_denied(),
-                    "ptrace_deny_items": self.app.storage.list_ptrace_deny_entries(),
-                },
-            )
-            return
-        if path.startswith("/api/v1/policy/"):
-            agent_id = path.rsplit("/", 1)[-1]
-            self.app.storage.heartbeat(agent_id)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True, agent_scope=agent_id),
-                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True, agent_scope=agent_id),
-                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True, agent_scope=agent_id),
-                    "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True, agent_scope=agent_id),
-                    "deny_ptrace": self.app.storage.ptrace_denied(agent_scope=agent_id),
-                },
-            )
-            return
-
-        self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+        
+        # For any other path, redirect to login
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", "/login")
+        self.end_headers()
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
-        if not self._check_auth(path):
+        
+        # Login endpoint
+        if path == "/api/v1/login":
+            payload = self._read_json()
+            username = as_str(payload.get("username"))
+            password = as_str(payload.get("password"))
+            
+            if username == "admin" and password == "secret":
+                # Create session token
+                token = secrets.token_urlsafe(32)
+                sessions[token] = datetime.now(timezone.utc) + timedelta(hours=24)
+                self._json(HTTPStatus.OK, {"token": token})
+                # Set cookie
+                self.send_header("Set-Cookie", f"session={token}; Path=/; HttpOnly; SameSite=Lax")
+            else:
+                self._json(HTTPStatus.UNAUTHORIZED, {"error": "invalid credentials"})
             return
+        
+        # Check auth for other API endpoints
+        if path.startswith("/api/"):
+            # Check session
+            session_token = None
+            cookie_header = self.headers.get("Cookie", "")
+            for cookie in cookie_header.split(";"):
+                cookie = cookie.strip()
+                if cookie.startswith("session="):
+                    session_token = cookie[8:]
+                    break
+            
+            if session_token and session_token in sessions:
+                if sessions[session_token] > datetime.now(timezone.utc):
+                    # Session is valid, proceed
+                    pass
+                else:
+                    del sessions[session_token]
+                    self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                    return
+            else:
+                self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                return
+        
         payload = self._read_json()
 
         if path == "/api/v1/agents/register":
@@ -1225,8 +1259,30 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_DELETE(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
-        if not self._check_auth(path):
-            return
+        
+        # Check auth for API endpoints
+        if path.startswith("/api/"):
+            # Check session
+            session_token = None
+            cookie_header = self.headers.get("Cookie", "")
+            for cookie in cookie_header.split(";"):
+                cookie = cookie.strip()
+                if cookie.startswith("session="):
+                    session_token = cookie[8:]
+                    break
+            
+            if session_token and session_token in sessions:
+                if sessions[session_token] > datetime.now(timezone.utc):
+                    # Session is valid, proceed
+                    pass
+                else:
+                    del sessions[session_token]
+                    self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                    return
+            else:
+                self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                return
+        
         payload = self._read_json()
 
         if path == "/api/v1/policy/blocked-ipv4":

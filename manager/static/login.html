@@ -182,41 +182,11 @@
       transform: translateY(0);
     }
 
-    .login-button.loading {
-      pointer-events: none;
-      opacity: 0.7;
-    }
-
-    .login-button.loading::after {
-      content: "";
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      margin-left: 10px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
     .footer {
       text-align: center;
       margin-top: 28px;
       color: #475569;
       font-size: 0.72rem;
-    }
-
-    .footer a {
-      color: #60a5fa;
-      text-decoration: none;
-    }
-
-    .footer a:hover {
-      text-decoration: underline;
     }
 
     @media (max-width: 480px) {
@@ -252,7 +222,7 @@
         <span id="error-text">Invalid credentials. Please try again.</span>
       </div>
 
-      <form id="login-form">
+      <form id="login-form" method="POST" action="/api/v1/login">
         <div class="input-group">
           <label class="input-label">Username</label>
           <div class="input-field">
@@ -260,7 +230,7 @@
               <path d="M20 21a8 8 0 0 0-16 0"></path>
               <circle cx="12" cy="8" r="4"></circle>
             </svg>
-            <input type="text" id="username" placeholder="admin" autocomplete="username">
+            <input type="text" id="username" name="username" placeholder="admin" autocomplete="username">
           </div>
         </div>
 
@@ -271,11 +241,11 @@
               <rect x="4" y="8" width="16" height="14" rx="2"></rect>
               <path d="M8 8V6a4 4 0 0 1 8 0v2"></path>
             </svg>
-            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+            <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password">
           </div>
         </div>
 
-        <button type="submit" class="login-button" id="login-btn">Sign In</button>
+        <button type="submit" class="login-button">Sign In</button>
       </form>
 
       <div class="footer">
@@ -286,9 +256,6 @@
 
   <script>
     const form = document.getElementById('login-form');
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
-    const loginBtn = document.getElementById('login-btn');
     const errorDiv = document.getElementById('error-message');
     const errorText = document.getElementById('error-text');
 
@@ -300,55 +267,31 @@
         }, 4000);
     }
 
-    function hideError() {
-        errorDiv.classList.remove('show');
-    }
-
-    async function login(username, password) {
-        const credentials = btoa(`${username}:${password}`);
-        
-        try {
-            const response = await fetch('/api/v1/metrics/summary', {
-                headers: {
-                    'Authorization': `Basic ${credentials}`
-                }
-            });
-
-            if (response.ok) {
-                localStorage.setItem('auth_credentials', credentials);
-                window.location.href = '/';
-            } else {
-                showError('Invalid username or password');
-            }
-        } catch (err) {
-            showError('Connection error. Please try again.');
-        }
-    }
-
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        hideError();
-
-        const username = usernameInput.value.trim();
-        const password = passwordInput.value;
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
 
         if (!username || !password) {
             showError('Please enter both username and password');
             return;
         }
 
-        loginBtn.classList.add('loading');
-        loginBtn.textContent = 'Authenticating';
+        const response = await fetch('/api/v1/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password })
+        });
 
-        await login(username, password);
-
-        loginBtn.classList.remove('loading');
-        loginBtn.textContent = 'Sign In';
+        if (response.ok) {
+            window.location.href = '/';
+        } else {
+            showError('Invalid username or password');
+        }
     });
-
-    // Only check for saved credentials if we're NOT already on the login page trying to log out?
-    // Remove the auto-redirect code completely
-    usernameInput.focus();
-</script>
+  </script>
 </body>
 </html>
