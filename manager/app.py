@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-# Session store
+# Session store for web UI
 sessions = {}  # token -> expiry
 
 
@@ -1010,6 +1010,36 @@ class AppHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
+    def _check_basic_auth(self) -> bool:
+        """Check Basic Auth for agent endpoints"""
+        auth = self.headers.get("Authorization")
+        if auth and auth.startswith("Basic "):
+            try:
+                import base64
+                decoded = base64.b64decode(auth[6:]).decode('utf-8')
+                username, password = decoded.split(':', 1)
+                return username == "admin" and password == "secret"
+            except Exception:
+                pass
+        return False
+
+    def _check_session_auth(self) -> bool:
+        """Check session auth for web UI"""
+        session_token = None
+        cookie_header = self.headers.get("Cookie", "")
+        for cookie in cookie_header.split(";"):
+            cookie = cookie.strip()
+            if cookie.startswith("session="):
+                session_token = cookie[8:]
+                break
+        
+        if session_token and session_token in sessions:
+            if sessions[session_token] > datetime.now(timezone.utc):
+                return True
+            else:
+                del sessions[session_token]
+        return False
+
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path = parsed.path
@@ -1028,30 +1058,33 @@ class AppHandler(BaseHTTPRequestHandler):
             self._serve_file(self.app.config.static_dir / "app.js", "application/javascript; charset=utf-8")
             return
         
-        # Check auth for API calls
+        # Handle API endpoints
         if path.startswith("/api/"):
-            # Check session
-            session_token = None
-            cookie_header = self.headers.get("Cookie", "")
-            for cookie in cookie_header.split(";"):
-                cookie = cookie.strip()
-                if cookie.startswith("session="):
-                    session_token = cookie[8:]
-                    break
-            
-            if session_token and session_token in sessions:
-                if sessions[session_token] > datetime.now(timezone.utc):
-                    # Session is valid, proceed with API call
-                    pass
-                else:
-                    del sessions[session_token]
+            # Agent policy endpoints - allow Basic Auth
+            if path.startswith("/api/v1/policy/"):
+                if not self._check_basic_auth():
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
                     return
-            else:
+                
+                agent_id = path.rsplit("/", 1)[-1]
+                self.app.storage.heartbeat(agent_id)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True, agent_scope=agent_id),
+                        "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True, agent_scope=agent_id),
+                        "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True, agent_scope=agent_id),
+                        "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True, agent_scope=agent_id),
+                        "deny_ptrace": self.app.storage.ptrace_denied(agent_scope=agent_id),
+                    },
+                )
+                return
+            
+            # Web UI endpoints - check session
+            if not self._check_session_auth():
                 self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
                 return
             
-            # Process API requests
             query = parse_qs(parsed.query)
             
             if path == "/api/v1/agents":
@@ -1088,20 +1121,6 @@ class AppHandler(BaseHTTPRequestHandler):
                     },
                 )
                 return
-            if path.startswith("/api/v1/policy/"):
-                agent_id = path.rsplit("/", 1)[-1]
-                self.app.storage.heartbeat(agent_id)
-                self._json(
-                    HTTPStatus.OK,
-                    {
-                        "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True, agent_scope=agent_id),
-                        "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True, agent_scope=agent_id),
-                        "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True, agent_scope=agent_id),
-                        "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True, agent_scope=agent_id),
-                        "deny_ptrace": self.app.storage.ptrace_denied(agent_scope=agent_id),
-                    },
-                )
-                return
             
             self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
             return
@@ -1114,54 +1133,39 @@ class AppHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         
-        # Login endpoint
+        # Login endpoint (no auth required)
         if path == "/api/v1/login":
             payload = self._read_json()
             username = as_str(payload.get("username"))
             password = as_str(payload.get("password"))
             
             if username == "admin" and password == "secret":
-                # Create session token
                 token = secrets.token_urlsafe(32)
                 sessions[token] = datetime.now(timezone.utc) + timedelta(hours=24)
                 self._json(HTTPStatus.OK, {"token": token})
-                # Set cookie
                 self.send_header("Set-Cookie", f"session={token}; Path=/; HttpOnly; SameSite=Lax")
             else:
                 self._json(HTTPStatus.UNAUTHORIZED, {"error": "invalid credentials"})
             return
         
-        # Check auth for other API endpoints
-        if path.startswith("/api/"):
-            # Check session
-            session_token = None
-            cookie_header = self.headers.get("Cookie", "")
-            for cookie in cookie_header.split(";"):
-                cookie = cookie.strip()
-                if cookie.startswith("session="):
-                    session_token = cookie[8:]
-                    break
-            
-            if session_token and session_token in sessions:
-                if sessions[session_token] > datetime.now(timezone.utc):
-                    # Session is valid, proceed
-                    pass
-                else:
-                    del sessions[session_token]
-                    self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
-                    return
-            else:
+        # Agent registration endpoint - allow Basic Auth
+        if path == "/api/v1/agents/register":
+            if not self._check_basic_auth():
                 self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
                 return
-        
-        payload = self._read_json()
-
-        if path == "/api/v1/agents/register":
+            
+            payload = self._read_json()
             agent_id = self.app.storage.register_agent(payload)
             self._json(HTTPStatus.OK, {"agent_id": agent_id})
             return
-
+        
+        # Events endpoint - allow Basic Auth
         if path == "/api/v1/events":
+            if not self._check_basic_auth():
+                self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                return
+            
+            payload = self._read_json()
             events: list[dict[str, Any]]
             raw_payload: Any = payload
             if isinstance(raw_payload, dict) and isinstance(raw_payload.get("events"), list):
@@ -1173,194 +1177,185 @@ class AppHandler(BaseHTTPRequestHandler):
             written = self.app.storage.insert_events(events)
             self._json(HTTPStatus.OK, {"written": written})
             return
-
-        if path == "/api/v1/policy/blocked-ipv4":
-            ip = as_str(payload.get("ip")).strip()
-            enabled = bool(payload.get("enabled", True))
-            agent_scope = as_str(payload.get("agent_id")).strip()
-            if not ip:
-                self._json(HTTPStatus.BAD_REQUEST, {"error": "ip_required"})
+        
+        # Policy management endpoints - require session auth (web UI only)
+        if path.startswith("/api/v1/policy/"):
+            if not self._check_session_auth():
+                self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
                 return
-            self.app.storage.set_blocked_ipv4(ip, enabled, agent_scope)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
-                    "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
-                },
-            )
-            return
-
-        if path == "/api/v1/policy/blocked-bind-port":
-            port = as_int(payload.get("port"))
-            enabled = bool(payload.get("enabled", True))
-            agent_scope = as_str(payload.get("agent_id")).strip()
-            if port <= 0 or port > 65535:
-                self._json(HTTPStatus.BAD_REQUEST, {"error": "valid_port_required"})
+            
+            payload = self._read_json()
+            
+            if path == "/api/v1/policy/blocked-ipv4":
+                ip = as_str(payload.get("ip")).strip()
+                enabled = bool(payload.get("enabled", True))
+                agent_scope = as_str(payload.get("agent_id")).strip()
+                if not ip:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": "ip_required"})
+                    return
+                self.app.storage.set_blocked_ipv4(ip, enabled, agent_scope)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
+                        "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
+                    },
+                )
                 return
-            self.app.storage.set_blocked_bind_port(port, enabled, agent_scope)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
-                    "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
-                },
-            )
-            return
 
-        if path == "/api/v1/policy/blocked-exec-path":
-            exec_path = as_str(payload.get("path")).strip()
-            enabled = bool(payload.get("enabled", True))
-            agent_scope = as_str(payload.get("agent_id")).strip()
-            if not exec_path:
-                self._json(HTTPStatus.BAD_REQUEST, {"error": "path_required"})
+            if path == "/api/v1/policy/blocked-bind-port":
+                port = as_int(payload.get("port"))
+                enabled = bool(payload.get("enabled", True))
+                agent_scope = as_str(payload.get("agent_id")).strip()
+                if port <= 0 or port > 65535:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": "valid_port_required"})
+                    return
+                self.app.storage.set_blocked_bind_port(port, enabled, agent_scope)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
+                        "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
+                    },
+                )
                 return
-            self.app.storage.set_blocked_exec_path(exec_path, enabled, agent_scope)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True),
-                    "blocked_exec_path_items": self.app.storage.list_blocked_exec_path_entries(),
-                },
-            )
-            return
 
-        if path == "/api/v1/policy/protected-write-target":
-            target = as_str(payload.get("target")).strip()
-            enabled = bool(payload.get("enabled", True))
-            agent_scope = as_str(payload.get("agent_id")).strip()
-            if not target:
-                self._json(HTTPStatus.BAD_REQUEST, {"error": "target_required"})
+            if path == "/api/v1/policy/blocked-exec-path":
+                exec_path = as_str(payload.get("path")).strip()
+                enabled = bool(payload.get("enabled", True))
+                agent_scope = as_str(payload.get("agent_id")).strip()
+                if not exec_path:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": "path_required"})
+                    return
+                self.app.storage.set_blocked_exec_path(exec_path, enabled, agent_scope)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True),
+                        "blocked_exec_path_items": self.app.storage.list_blocked_exec_path_entries(),
+                    },
+                )
                 return
-            self.app.storage.set_protected_write_target(target, enabled, agent_scope)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True),
-                    "protected_write_target_items": self.app.storage.list_protected_write_target_entries(),
-                },
-            )
-            return
 
-        if path == "/api/v1/policy/deny-ptrace":
-            enabled = bool(payload.get("enabled", True))
-            agent_scope = as_str(payload.get("agent_id")).strip()
-            self.app.storage.set_ptrace_deny(enabled, agent_scope)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "deny_ptrace": self.app.storage.ptrace_denied(),
-                    "ptrace_deny_items": self.app.storage.list_ptrace_deny_entries(),
-                },
-            )
-            return
+            if path == "/api/v1/policy/protected-write-target":
+                target = as_str(payload.get("target")).strip()
+                enabled = bool(payload.get("enabled", True))
+                agent_scope = as_str(payload.get("agent_id")).strip()
+                if not target:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": "target_required"})
+                    return
+                self.app.storage.set_protected_write_target(target, enabled, agent_scope)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True),
+                        "protected_write_target_items": self.app.storage.list_protected_write_target_entries(),
+                    },
+                )
+                return
 
+            if path == "/api/v1/policy/deny-ptrace":
+                enabled = bool(payload.get("enabled", True))
+                agent_scope = as_str(payload.get("agent_id")).strip()
+                self.app.storage.set_ptrace_deny(enabled, agent_scope)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "deny_ptrace": self.app.storage.ptrace_denied(),
+                        "ptrace_deny_items": self.app.storage.list_ptrace_deny_entries(),
+                    },
+                )
+                return
+        
         self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
     def do_DELETE(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         
-        # Check auth for API endpoints
-        if path.startswith("/api/"):
-            # Check session
-            session_token = None
-            cookie_header = self.headers.get("Cookie", "")
-            for cookie in cookie_header.split(";"):
-                cookie = cookie.strip()
-                if cookie.startswith("session="):
-                    session_token = cookie[8:]
-                    break
-            
-            if session_token and session_token in sessions:
-                if sessions[session_token] > datetime.now(timezone.utc):
-                    # Session is valid, proceed
-                    pass
-                else:
-                    del sessions[session_token]
-                    self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
-                    return
-            else:
+        # Policy management endpoints - require session auth (web UI only)
+        if path.startswith("/api/v1/policy/"):
+            if not self._check_session_auth():
                 self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
                 return
+            
+            payload = self._read_json()
+            
+            if path == "/api/v1/policy/blocked-ipv4":
+                ip = as_str(payload.get("ip")).strip()
+                agent_scope = as_str(payload.get("agent_id")).strip()
+                if not ip:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": "ip_required"})
+                    return
+                self.app.storage.delete_blocked_ipv4(ip, agent_scope)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
+                        "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
+                    },
+                )
+                return
+
+            if path == "/api/v1/policy/blocked-bind-port":
+                port = as_int(payload.get("port"))
+                agent_scope = as_str(payload.get("agent_id")).strip()
+                if port <= 0 or port > 65535:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": "valid_port_required"})
+                    return
+                self.app.storage.delete_blocked_bind_port(port, agent_scope)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
+                        "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
+                    },
+                )
+                return
+
+            if path == "/api/v1/policy/blocked-exec-path":
+                exec_path = as_str(payload.get("path")).strip()
+                agent_scope = as_str(payload.get("agent_id")).strip()
+                if not exec_path:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": "path_required"})
+                    return
+                self.app.storage.delete_blocked_exec_path(exec_path, agent_scope)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True),
+                        "blocked_exec_path_items": self.app.storage.list_blocked_exec_path_entries(),
+                    },
+                )
+                return
+
+            if path == "/api/v1/policy/protected-write-target":
+                target = as_str(payload.get("target")).strip()
+                agent_scope = as_str(payload.get("agent_id")).strip()
+                if not target:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": "target_required"})
+                    return
+                self.app.storage.delete_protected_write_target(target, agent_scope)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True),
+                        "protected_write_target_items": self.app.storage.list_protected_write_target_entries(),
+                    },
+                )
+                return
+
+            if path == "/api/v1/policy/deny-ptrace":
+                agent_scope = as_str(payload.get("agent_id")).strip()
+                self.app.storage.delete_ptrace_deny(agent_scope)
+                self._json(
+                    HTTPStatus.OK,
+                    {
+                        "deny_ptrace": self.app.storage.ptrace_denied(),
+                        "ptrace_deny_items": self.app.storage.list_ptrace_deny_entries(),
+                    },
+                )
+                return
         
-        payload = self._read_json()
-
-        if path == "/api/v1/policy/blocked-ipv4":
-            ip = as_str(payload.get("ip")).strip()
-            agent_scope = as_str(payload.get("agent_id")).strip()
-            if not ip:
-                self._json(HTTPStatus.BAD_REQUEST, {"error": "ip_required"})
-                return
-            self.app.storage.delete_blocked_ipv4(ip, agent_scope)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
-                    "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
-                },
-            )
-            return
-
-        if path == "/api/v1/policy/blocked-bind-port":
-            port = as_int(payload.get("port"))
-            agent_scope = as_str(payload.get("agent_id")).strip()
-            if port <= 0 or port > 65535:
-                self._json(HTTPStatus.BAD_REQUEST, {"error": "valid_port_required"})
-                return
-            self.app.storage.delete_blocked_bind_port(port, agent_scope)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
-                    "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
-                },
-            )
-            return
-
-        if path == "/api/v1/policy/blocked-exec-path":
-            exec_path = as_str(payload.get("path")).strip()
-            agent_scope = as_str(payload.get("agent_id")).strip()
-            if not exec_path:
-                self._json(HTTPStatus.BAD_REQUEST, {"error": "path_required"})
-                return
-            self.app.storage.delete_blocked_exec_path(exec_path, agent_scope)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True),
-                    "blocked_exec_path_items": self.app.storage.list_blocked_exec_path_entries(),
-                },
-            )
-            return
-
-        if path == "/api/v1/policy/protected-write-target":
-            target = as_str(payload.get("target")).strip()
-            agent_scope = as_str(payload.get("agent_id")).strip()
-            if not target:
-                self._json(HTTPStatus.BAD_REQUEST, {"error": "target_required"})
-                return
-            self.app.storage.delete_protected_write_target(target, agent_scope)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True),
-                    "protected_write_target_items": self.app.storage.list_protected_write_target_entries(),
-                },
-            )
-            return
-
-        if path == "/api/v1/policy/deny-ptrace":
-            agent_scope = as_str(payload.get("agent_id")).strip()
-            self.app.storage.delete_ptrace_deny(agent_scope)
-            self._json(
-                HTTPStatus.OK,
-                {
-                    "deny_ptrace": self.app.storage.ptrace_denied(),
-                    "ptrace_deny_items": self.app.storage.list_ptrace_deny_entries(),
-                },
-            )
-            return
-
         self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
 
