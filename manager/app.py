@@ -1402,7 +1402,7 @@ def main() -> None:
     detectors = DetectorCatalog(config.detector_dir)
     storage = Storage(config.db_path, detectors)
     srv = AppServer(config, storage)
-    print(f"manager listening on http://{config.host}:{config.port}")
+    print(f"manager listening on http://{config.host}:{config.port}/login")
     srv.serve_forever()
 
 
