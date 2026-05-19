@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ataree - Login</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.2), transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.15), transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(244, 63, 94, 0.05), transparent 60%),
+        linear-gradient(145deg, #020617 0%, #0f172a 100%);
+      padding: 24px;
+    }
+
+    .login-card {
+      max-width: 420px;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-elevated);
+      backdrop-filter: blur(16px);
+      padding: 40px 32px;
+      box-shadow: var(--shadow);
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      margin-bottom: 20px;
+      color: white;
+    }
+
+    .login-logo svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .login-card h1 {
+      margin: 0 0 8px;
+      font-size: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .login-card p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .input-group label {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .input-group input {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(10, 11, 15, 0.78);
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .input-group input:focus {
+      border-color: rgba(59, 130, 246, 0.66);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+    }
+
+    .login-button {
+      margin-top: 8px;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .login-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.3);
+    }
+
+    .error-message {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      background: var(--critical-bg);
+      color: #fca5a5;
+      font-size: 0.85rem;
+      text-align: center;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+    }
+
+    .demo-hint {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    .demo-hint code {
+      font-family: var(--font-mono);
+      background: rgba(148, 163, 184, 0.1);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M12 3 5 6v6c0 4.7 2.9 7.8 7 9 4.1-1.2 7-4.3 7-9V6l-7-3Z"></path>
+            <path d="m9.5 12 1.8 1.8 3.7-4"></path>
+          </svg>
+        </div>
+        <h1>Ataree</h1>
+        <p>Kernel Threat Detection Control Plane</p>
+      </div>
+
+      <form id="login-form" class="login-form">
+        <div class="input-group">
+          <label>Username</label>
+          <input type="text" id="username" name="username" placeholder="admin" autocomplete="off" />
+        </div>
+
+        <div class="input-group">
+          <label>Password</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" />
+        </div>
+
+        <button type="submit" class="login-button">Sign In</button>
+
+        <div id="error-message" class="error-message">
+          Invalid username or password
+        </div>
+      </form>
+
+      <div class="demo-hint">
+        <p>Demo credentials — any non-empty username and password will work</p>
+        <p><code>admin</code> / <code>anything</code></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const errorEl = document.getElementById('error-message');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.classList.remove('show');
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      if (!username || !password) {
+        errorEl.textContent = 'Please enter both username and password';
+        errorEl.classList.add('show');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/v1/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (response.ok) {
+          window.location.href = '/';
+        } else {
+          errorEl.textContent = 'Invalid username or password';
+          errorEl.classList.add('show');
+        }
+      } catch (err) {
+        errorEl.textContent = 'Connection error. Please try again.';
+        errorEl.classList.add('show');
+      }
+    });
+  </script>
+</body>
+
+</html>

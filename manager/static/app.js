@@ -16,6 +16,10 @@ const state = {
 
 async function fetchJson(url, options = {}) {
   const res = await fetch(url, options);
+  if (res.status === 401) {
+    window.location.href = '/login.html';
+    throw new Error('Unauthorized');
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.json();
 }
@@ -1037,6 +1041,32 @@ document.getElementById("detection-backdrop").addEventListener("click", closeDet
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeDetectionDrawer();
 });
+
+// Add logout functionality
+function addLogoutButton() {
+  const toolbar = document.querySelector('.toolbar');
+  if (toolbar && !document.querySelector('.logout-button')) {
+    const logoutBtn = document.createElement('button');
+    logoutBtn.className = 'profile-button logout-button';
+    logoutBtn.setAttribute('aria-label', 'Logout');
+    logoutBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
+    `;
+    logoutBtn.addEventListener('click', async () => {
+      await fetch('/api/v1/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+    toolbar.appendChild(logoutBtn);
+  }
+}
+
+// Call this after initial render
+setTimeout(addLogoutButton, 100);
+
 
 refresh().catch(console.error);
 setInterval(() => {

@@ -1006,28 +1006,48 @@ class AppHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def _check_auth(self, path: str) -> bool:
-        if path == "/healthz": return True
-        if path.startswith("/api/v1/policy/") and not path.startswith("/api/v1/policy/blocked-") and not path.startswith("/api/v1/policy/protected-") and not path.startswith("/api/v1/policy/deny-"):
-            return True
-        if path == "/api/v1/agents/register": return True
-        if path == "/api/v1/events" and self.command == "POST": return True
-        
-        auth = self.headers.get("Authorization")
-        if auth == "Basic YWRtaW46c2VjcmV0":  # admin:secret
+    def _check_auth(self) -> bool:
+        # Login endpoint - always allow
+        if self.path == "/api/v1/login":
             return True
         
-        self.send_response(HTTPStatus.UNAUTHORIZED)
-        self.send_header("WWW-Authenticate", 'Basic realm="Ataree"')
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-        self.wfile.write(b'{"error": "unauthorized"}')
+        # Agent endpoints - no auth needed
+        if self.path == "/healthz": return True
+        if self.path == "/api/v1/agents/register": return True
+        if self.path == "/api/v1/events" and self.command == "POST": return True
+        if self.path.startswith("/api/v1/policy/") and not self.path.startswith("/api/v1/policy/blocked-") and not self.path.startswith("/api/v1/policy/protected-") and not self.path.startswith("/api/v1/policy/deny-"):
+            return True
+        
+        # Static files - always allow
+        if self.path == "/" or self.path == "/index.html" or self.path == "/login.html" or self.path == "/style.css" or self.path == "/app.js":
+            return True
+        
+        # API endpoints - check for session cookie
+        cookie = self.headers.get("Cookie", "")
+        if "kshield_session=authenticated" in cookie:
+            return True
+        
+        # For API calls that need auth, return 401
+        if self.path.startswith("/api/"):
+            self.send_response(HTTPStatus.UNAUTHORIZED)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"error": "unauthorized"}')
+            return False
+        
+        # For page requests, redirect to login
+        if self.command == "GET" and self.path != "/login.html":
+            self.send_response(HTTPStatus.FOUND)
+            self.send_header("Location", "/login.html")
+            self.end_headers()
+            return False
+        
         return False
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path = parsed.path
-        if not self._check_auth(path):
+        if not self._check_auth():
             return
         query = parse_qs(parsed.query)
 
@@ -1036,6 +1056,9 @@ class AppHandler(BaseHTTPRequestHandler):
             return
         if path == "/":
             self._serve_file(self.app.config.static_dir / "index.html", "text/html; charset=utf-8")
+            return
+        if path == "/login.html":
+            self._serve_file(self.app.config.static_dir / "login.html", "text/html; charset=utf-8")
             return
         if path == "/style.css":
             self._serve_file(self.app.config.static_dir / "style.css", "text/css; charset=utf-8")
@@ -1096,10 +1119,32 @@ class AppHandler(BaseHTTPRequestHandler):
         self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
     def do_POST(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
-        if not self._check_auth(path):
+        if not self._check_auth():
             return
         payload = self._read_json()
+        path = urlparse(self.path).path
+
+        if path == "/api/v1/login":
+            username = as_str(payload.get("username")).strip()
+            password = as_str(payload.get("password")).strip()
+            # Demo auth - accept any non-empty credentials
+            if username and password:
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Set-Cookie", "kshield_session=authenticated; Path=/; HttpOnly; SameSite=Lax")
+                self.end_headers()
+                self.wfile.write(b'{"success": true}')
+            else:
+                self._json(HTTPStatus.UNAUTHORIZED, {"error": "invalid_credentials"})
+            return
+
+        if path == "/api/v1/logout":
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Set-Cookie", "kshield_session=; Path=/; HttpOnly; Max-Age=0")
+            self.end_headers()
+            self.wfile.write(b'{"success": true}')
+            return
 
         if path == "/api/v1/agents/register":
             agent_id = self.app.storage.register_agent(payload)
@@ -1203,10 +1248,10 @@ class AppHandler(BaseHTTPRequestHandler):
         self._json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
     def do_DELETE(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
-        if not self._check_auth(path):
+        if not self._check_auth():
             return
         payload = self._read_json()
+        path = urlparse(self.path).path
 
         if path == "/api/v1/policy/blocked-ipv4":
             ip = as_str(payload.get("ip")).strip()
