@@ -54,6 +54,7 @@ struct Settings {
     bpf_object: PathBuf,
     poll_ms: u64,
     policy_sync_secs: u64,
+    agent_token: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -62,6 +63,7 @@ struct RegisterRequest {
     ip: String,
     kernel: String,
     version: String,
+    agent_token: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -134,6 +136,7 @@ fn parse_settings() -> Result<Settings> {
     let mut bpf_object = PathBuf::from("agent/bpf/kshield.bpf.o");
     let mut poll_ms = 150_u64;
     let mut policy_sync_secs = 12_u64;
+    let mut agent_token = String::new();
 
     let args: Vec<String> = std::env::args().collect();
     let mut i = 1;
@@ -172,6 +175,13 @@ fn parse_settings() -> Result<Settings> {
                     .parse::<u64>()
                     .context("invalid --policy-sync-secs value")?;
             }
+            "--agent-token" => {
+                i += 1;
+                agent_token = args
+                    .get(i)
+                    .cloned()
+                    .ok_or_else(|| anyhow!("--agent-token requires a value"))?;
+            }
             "--help" | "-h" => {
                 print_help();
                 std::process::exit(0);
@@ -186,6 +196,7 @@ fn parse_settings() -> Result<Settings> {
         bpf_object,
         poll_ms,
         policy_sync_secs,
+        agent_token,
     })
 }
 
@@ -195,6 +206,7 @@ fn print_help() {
     println!("  --bpf-object <path>       default agent/bpf/kshield.bpf.o");
     println!("  --poll-ms <ms>            default 150");
     println!("  --policy-sync-secs <sec>  default 12");
+    println!("  --agent-token <token>     pre-shared token for manager registration");
 }
 
 fn require_root() -> Result<()> {
@@ -263,6 +275,7 @@ fn register(agent: &Agent, settings: &Settings) -> Result<String> {
         ip: local_ip_string(),
         kernel: kernel_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
+        agent_token: settings.agent_token.clone(),
     };
     let url = format!("{}/api/v1/agents/register", settings.manager_url);
     let resp = agent

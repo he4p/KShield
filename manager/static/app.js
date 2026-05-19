@@ -1,4 +1,5 @@
 const state = {
+  page: "dashboard",
   search: "",
   rangeHours: 24,
   summary: null,
@@ -12,7 +13,12 @@ const state = {
   protectedWriteTargets: [],
   ptraceDenies: [],
   selectedDetectionId: null,
+  agentToken: "",
+  agentMetrics: [],
+  benchmarks: null,
 };
+
+/* ---- util ---- */
 
 async function fetchJson(url, options = {}) {
   const res = await fetch(url, options);
@@ -21,33 +27,17 @@ async function fetchJson(url, options = {}) {
 }
 
 function esc(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+  return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = String(value);
-}
+function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = String(value); }
 
-function formatNumber(value) {
-  return Number(value || 0).toLocaleString();
-}
+function formatNumber(value) { return Number(value || 0).toLocaleString(); }
 
 function formatTs(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value || "-");
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  return date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 function relativeTime(value) {
@@ -59,8 +49,7 @@ function relativeTime(value) {
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 function deriveAgentStatus(agent) {
@@ -98,635 +87,268 @@ function inScope(ts) {
   return parsed >= Date.now() - state.rangeHours * 60 * 60 * 1000;
 }
 
+/* ---- navigation ---- */
+
+function switchPage(page) {
+  state.page = page;
+  document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.page === page));
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === `page-${page}`));
+}
+
+document.querySelectorAll(".nav-btn").forEach(btn => {
+  btn.addEventListener("click", () => switchPage(btn.dataset.page));
+});
+
+/* ---- filters ---- */
+
 function matchesTerm(values, term) {
-  return values.some((value) => String(value || "").toLowerCase().includes(term));
+  return values.some(v => String(v || "").toLowerCase().includes(term));
 }
 
 function filterAgents(items) {
   const term = state.search.trim().toLowerCase();
   if (!term) return items;
-  return items.filter((item) =>
-    matchesTerm([item.id, item.hostname, item.ip, item.kernel, item.version], term),
-  );
+  return items.filter(item => matchesTerm([item.id, item.hostname, item.ip, item.kernel, item.version], term));
 }
 
 function filterEvents(items) {
   const term = state.search.trim().toLowerCase();
-  return items.filter((item) => {
+  return items.filter(item => {
     if (!inScope(item.ts)) return false;
     if (!term) return true;
-    return matchesTerm(
-      [
-        item.id,
-        item.agent_id,
-        item.event_type,
-        item.action,
-        item.severity,
-        item.comm,
-        item.dst_ip,
-        item.dst_port,
-        item.subject,
-        item.arg0,
-        item.arg1,
-        item.ppid,
-        item.ancestry,
-        item.process_path,
-        item.pid_ns,
-        item.mount_ns,
-        item.net_ns,
-      ],
-      term,
-    );
+    return matchesTerm([item.id, item.agent_id, item.event_type, item.action, item.severity, item.comm, item.dst_ip, item.dst_port, item.subject, item.arg0, item.arg1, item.ppid, item.ancestry, item.process_path, item.pid_ns, item.mount_ns, item.net_ns], term);
   });
 }
 
 function filterDetections(items) {
   const term = state.search.trim().toLowerCase();
-  return items.filter((item) => {
+  return items.filter(item => {
     if (!inScope(item.ts)) return false;
     if (!term) return true;
-    return matchesTerm(
-      [
-        item.id,
-        item.detector_id,
-        item.detector_name,
-        item.severity,
-        item.agent_id,
-        item.event_type,
-        item.summary,
-        item.subject,
-        item.match_count,
-        item.correlation_key,
-      ],
-      term,
-    );
+    return matchesTerm([item.id, item.detector_id, item.detector_name, item.severity, item.agent_id, item.event_type, item.summary, item.subject, item.match_count, item.correlation_key], term);
   });
 }
 
 function filterDetectors(items) {
   const term = state.search.trim().toLowerCase();
   if (!term) return items;
-  return items.filter((item) =>
-    matchesTerm([item.id, item.name, item.description, (item.tags || []).join(" ")], term),
-  );
+  return items.filter(item => matchesTerm([item.id, item.name, item.description, (item.tags || []).join(" ")], term));
 }
 
-function renderAgents(items) {
-  const tbody = document.querySelector("#agents-table tbody");
+/* ---- render: agents page ---- */
+
+function renderAgentsPage(items) {
+  const tbody = document.querySelector("#agents-full-table tbody");
   tbody.innerHTML = "";
-
-  if (!items.length) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 5;
-    td.appendChild(createEmptyState("No agents match the current filters", "Clear the search box or wait for agents to check in."));
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-    return;
-  }
-
+  if (!items.length) { tbody.appendChild(emptyRow(8, "No agents registered", "Use the Add Agent form to register a new endpoint agent.")); return; }
   for (const agent of items) {
-    const status = deriveAgentStatus(agent);
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="mono">${esc(agent.hostname || agent.id)}</td>
-      <td class="mono subtle">${esc(agent.ip)}</td>
-      <td class="mono subtle">${esc(agent.kernel || "-")}</td>
-      <td><span class="pill ${status}">${esc(status)}</span></td>
-      <td class="subtle">${esc(relativeTime(agent.last_seen))}</td>
-    `;
+    tr.innerHTML = `<td class="mono">${esc(agent.hostname || agent.id)}</td><td class="mono subtle">${esc(agent.ip)}</td><td class="mono subtle">${esc(agent.kernel || "-")}</td><td class="subtle">${esc(agent.version || "-")}</td><td><span class="pill ${deriveAgentStatus(agent)}">${esc(deriveAgentStatus(agent))}</span></td><td class="subtle">${esc(formatTs(agent.first_seen))}</td><td class="subtle">${esc(relativeTime(agent.last_seen))}</td><td><button class="action-btn danger" data-remove-agent="${esc(agent.id)}">Remove</button></td>`;
     tbody.appendChild(tr);
   }
 }
 
-function renderEvents(items, detectionEventIds) {
-  const tbody = document.querySelector("#events-table tbody");
+/* ---- render: events page ---- */
+
+function renderEventsPage(items, detectionEventIds) {
+  const tbody = document.querySelector("#events-full-table tbody");
   tbody.innerHTML = "";
-
-  if (!items.length) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 8;
-    td.appendChild(createEmptyState("No security events in scope", "Adjust the time range or search filter to widen the view."));
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-    return;
-  }
-
-  for (const evt of items) {
-    const action = actionClass(evt.action);
-    const severity = severityClass(evt.severity);
+  if (!items.length) { tbody.appendChild(emptyRow(8, "No events in scope", "Adjust time range or search filter.")); return; }
+  for (const evt of items.slice(0, 500)) {
     const dst = evt.dst_ip ? `${evt.dst_ip}:${evt.dst_port || 0}` : "-";
-    const subject = evt.subject || (evt.event_type === "ptrace" ? `request=${evt.arg0} pid=${evt.arg1}` : "-");
+    const subject = evt.subject || (evt.event_type === "ptrace" ? `req=${evt.arg0} pid=${evt.arg1}` : "-");
     const process = evt.process_path || evt.comm || "-";
     const tr = document.createElement("tr");
-    if (action === "block") tr.classList.add("blocked-row");
-    if (detectionEventIds.has(evt.id)) tr.classList.add("detection-linked");
-    tr.innerHTML = `
-      <td class="subtle">${esc(formatTs(evt.ts))}</td>
-      <td class="mono">${esc(evt.agent_id)}</td>
-      <td>${esc(evt.event_type)}</td>
-      <td class="mono subtle">${esc(process)} (${esc(evt.pid || 0)})</td>
-      <td class="mono subtle">${esc(subject)}</td>
-      <td class="mono subtle">${esc(dst)}</td>
-      <td><span class="pill ${severity}">${esc(evt.severity || "info")}</span></td>
-      <td><span class="pill ${action}">${esc(evt.action || "observe")}</span></td>
-    `;
+    if (actionClass(evt.action) === "block") tr.classList.add("blocked-row");
+    if (detectionEventIds && detectionEventIds.has(evt.id)) tr.classList.add("detection-linked");
+    tr.innerHTML = `<td class="subtle">${esc(formatTs(evt.ts))}</td><td class="mono">${esc(evt.agent_id)}</td><td>${esc(evt.event_type)}</td><td class="mono subtle">${esc(process)} (${esc(evt.pid || 0)})</td><td class="mono subtle">${esc(subject)}</td><td class="mono subtle">${esc(dst)}</td><td><span class="pill ${severityClass(evt.severity)}">${esc(evt.severity || "info")}</span></td><td><span class="pill ${actionClass(evt.action)}">${esc(evt.action || "observe")}</span></td>`;
     tbody.appendChild(tr);
   }
 }
+
+/* ---- render: detections ---- */
 
 function renderDetections(items) {
   const tbody = document.querySelector("#detections-table tbody");
   tbody.innerHTML = "";
-
-  if (!items.length) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 6;
-    td.appendChild(createEmptyState("No detectors have fired", "Trigger sample activity on an agent or load additional detector definitions."));
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-    return;
-  }
-
+  if (!items.length) { tbody.appendChild(emptyRow(6, "No detectors fired", "Trigger activity on an agent or load more detector definitions.")); return; }
   for (const hit of items) {
-    const severity = severityClass(hit.severity);
-    const action = actionClass(hit.action);
     const tr = document.createElement("tr");
     tr.dataset.detectionId = String(hit.id);
-    tr.innerHTML = `
-      <td class="subtle">${esc(formatTs(hit.ts))}</td>
-      <td>
-        <div class="stacked-cell">
-          <strong>${esc(hit.detector_name)}</strong>
-          <span class="subtle mono">${esc(hit.detector_id)}</span>
-        </div>
-      </td>
-      <td><span class="pill ${severity}">${esc(hit.severity)}</span></td>
-      <td class="mono">${esc(hit.agent_id)}</td>
-      <td>
-        <div class="stacked-cell">
-          <span>${esc(hit.event_type)}</span>
-          <span class="subtle">${esc(hit.action)}</span>
-        </div>
-      </td>
-      <td>
-        <div class="stacked-cell">
-          <strong>${esc(hit.summary)}</strong>
-          <span class="subtle">${action === "block" ? "Enforced by policy or LSM" : "Observed by detector only"}</span>
-        </div>
-      </td>
-    `;
+    tr.innerHTML = `<td class="subtle">${esc(formatTs(hit.ts))}</td><td><div class="stacked-cell"><strong>${esc(hit.detector_name)}</strong><span class="subtle mono">${esc(hit.detector_id)}</span></div></td><td><span class="pill ${severityClass(hit.severity)}">${esc(hit.severity)}</span></td><td class="mono">${esc(hit.agent_id)}</td><td><div class="stacked-cell"><span>${esc(hit.event_type)}</span><span class="subtle">${esc(hit.action)}</span></div></td><td><div class="stacked-cell"><strong>${esc(hit.summary)}</strong><span class="subtle">${actionClass(hit.action) === "block" ? "Enforced" : "Observed"}</span></div></td>`;
     tbody.appendChild(tr);
   }
+}
+
+/* ---- render: policy ---- */
+
+function policyCard(strong, detail, entry, scope, dataAttrs) {
+  const card = document.createElement("div");
+  card.className = `policy-item${entry.enabled ? "" : " is-disabled"}`;
+  let attrStr = "";
+  for (const [k, v] of Object.entries(dataAttrs)) attrStr += ` data-${k}="${esc(v)}"`;
+  card.innerHTML = `<div class="policy-item-main"><strong>${esc(strong)}</strong><span>${esc(detail)}</span></div><div class="policy-actions"><button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="${esc(scope)}" data-action="toggle"${attrStr}>${entry.enabled ? "Disable" : "Enable"}</button><button type="button" data-scope="${esc(scope)}" data-action="remove"${attrStr}>Remove</button></div>`;
+  return card;
 }
 
 function renderIpv4Policy(items) {
   const root = document.getElementById("policy-list");
   root.innerHTML = "";
-
-  if (!items.length) {
-    root.appendChild(createEmptyState("No blocked IPs configured", "Add a destination IP to push egress blocking down to connected agents."));
-    return;
-  }
-
-  for (const entry of items) {
-    const card = document.createElement("div");
-    card.className = `policy-item${entry.enabled ? "" : " is-disabled"}`;
-    card.innerHTML = `
-      <div class="policy-item-main">
-        <strong>${esc(entry.ip)}</strong>
-        <span>${entry.agent_id ? `Scoped to ${esc(entry.agent_id)}` : "Global"} • ${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
-      </div>
-      <div class="policy-actions">
-        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="ip" data-action="toggle" data-ip="${esc(entry.ip)}" data-agent="${esc(entry.agent_id || "")}">
-          ${entry.enabled ? "Disable" : "Enable"}
-        </button>
-        <button type="button" data-scope="ip" data-action="remove" data-ip="${esc(entry.ip)}" data-agent="${esc(entry.agent_id || "")}">Remove</button>
-      </div>
-    `;
-    root.appendChild(card);
-  }
+  if (!items.length) { root.appendChild(createEmptyState("No blocked IPs", "Add destination IPs to block via socket_connect LSM hook.")); return; }
+  for (const e of items) root.appendChild(policyCard(e.ip, `${e.agent_id ? "Scoped: "+e.agent_id : "Global"} • ${e.enabled?"Enabled":"Disabled"}`, e, "ip", { ip: e.ip, agent: e.agent_id || "" }));
 }
 
 function renderBindPolicy(items) {
   const root = document.getElementById("bind-policy-list");
   root.innerHTML = "";
-
-  if (!items.length) {
-    root.appendChild(createEmptyState("No blocked bind ports configured", "Add a local port to prevent listeners from binding to it via the socket_bind LSM hook."));
-    return;
-  }
-
-  for (const entry of items) {
-    const card = document.createElement("div");
-    card.className = `policy-item${entry.enabled ? "" : " is-disabled"}`;
-    card.innerHTML = `
-      <div class="policy-item-main">
-        <strong>tcp/${esc(entry.port)}</strong>
-        <span>${entry.agent_id ? `Scoped to ${esc(entry.agent_id)}` : "Global"} • ${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
-      </div>
-      <div class="policy-actions">
-        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="bind" data-action="toggle" data-port="${esc(entry.port)}" data-agent="${esc(entry.agent_id || "")}">
-          ${entry.enabled ? "Disable" : "Enable"}
-        </button>
-        <button type="button" data-scope="bind" data-action="remove" data-port="${esc(entry.port)}" data-agent="${esc(entry.agent_id || "")}">Remove</button>
-      </div>
-    `;
-    root.appendChild(card);
-  }
+  if (!items.length) { root.appendChild(createEmptyState("No blocked ports", "Block local bind attempts via socket_bind LSM hook.")); return; }
+  for (const e of items) root.appendChild(policyCard(`tcp/${e.port}`, `${e.agent_id ? "Scoped: "+e.agent_id : "Global"} • ${e.enabled?"Enabled":"Disabled"}`, e, "bind", { port: e.port, agent: e.agent_id || "" }));
 }
 
 function renderExecPolicy(items) {
   const root = document.getElementById("exec-policy-list");
   root.innerHTML = "";
-
-  if (!items.length) {
-    root.appendChild(createEmptyState("No denied exec paths configured", "Add an exact executable path to block via the bprm_check_security LSM hook."));
-    return;
-  }
-
-  for (const entry of items) {
-    const card = document.createElement("div");
-    card.className = `policy-item${entry.enabled ? "" : " is-disabled"}`;
-    card.innerHTML = `
-      <div class="policy-item-main">
-        <strong>${esc(entry.path)}</strong>
-        <span>${entry.agent_id ? `Scoped to ${esc(entry.agent_id)}` : "Global"} • ${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
-      </div>
-      <div class="policy-actions">
-        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="exec" data-action="toggle" data-path="${esc(entry.path)}" data-agent="${esc(entry.agent_id || "")}">
-          ${entry.enabled ? "Disable" : "Enable"}
-        </button>
-        <button type="button" data-scope="exec" data-action="remove" data-path="${esc(entry.path)}" data-agent="${esc(entry.agent_id || "")}">Remove</button>
-      </div>
-    `;
-    root.appendChild(card);
-  }
+  if (!items.length) { root.appendChild(createEmptyState("No denied exec paths", "Block execution via bprm_check_security LSM hook.")); return; }
+  for (const e of items) root.appendChild(policyCard(e.path, `${e.agent_id ? "Scoped: "+e.agent_id : "Global"} • ${e.enabled?"Enabled":"Disabled"}`, e, "exec", { path: e.path, agent: e.agent_id || "" }));
 }
 
 function renderWritePolicy(items) {
   const root = document.getElementById("write-policy-list");
   root.innerHTML = "";
-
-  if (!items.length) {
-    root.appendChild(createEmptyState("No protected write targets configured", "Add a basename like shadow or sudoers to deny write attempts through the file_permission LSM hook."));
-    return;
-  }
-
-  for (const entry of items) {
-    const card = document.createElement("div");
-    card.className = `policy-item${entry.enabled ? "" : " is-disabled"}`;
-    card.innerHTML = `
-      <div class="policy-item-main">
-        <strong>${esc(entry.target)}</strong>
-        <span>${entry.agent_id ? `Scoped to ${esc(entry.agent_id)}` : "Global"} • ${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
-      </div>
-      <div class="policy-actions">
-        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="write" data-action="toggle" data-target="${esc(entry.target)}" data-agent="${esc(entry.agent_id || "")}">
-          ${entry.enabled ? "Disable" : "Enable"}
-        </button>
-        <button type="button" data-scope="write" data-action="remove" data-target="${esc(entry.target)}" data-agent="${esc(entry.agent_id || "")}">Remove</button>
-      </div>
-    `;
-    root.appendChild(card);
-  }
+  if (!items.length) { root.appendChild(createEmptyState("No protected targets", "Deny writes via file_permission LSM hook.")); return; }
+  for (const e of items) root.appendChild(policyCard(e.target, `${e.agent_id ? "Scoped: "+e.agent_id : "Global"} • ${e.enabled?"Enabled":"Disabled"}`, e, "write", { target: e.target, agent: e.agent_id || "" }));
 }
 
 function renderPtracePolicy(items) {
   const root = document.getElementById("ptrace-policy-list");
   root.innerHTML = "";
-
-  if (!items.length) {
-    root.appendChild(createEmptyState("Ptrace deny is off", "Enable a global or scoped ptrace deny rule to block live process tracing and tampering."));
-    return;
-  }
-
-  for (const entry of items) {
-    const card = document.createElement("div");
-    card.className = `policy-item${entry.enabled ? "" : " is-disabled"}`;
-    card.innerHTML = `
-      <div class="policy-item-main">
-        <strong>${entry.agent_id ? esc(entry.agent_id) : "Global ptrace deny"}</strong>
-        <span>${entry.agent_id ? `Scoped to ${esc(entry.agent_id)}` : "Global"} • ${entry.enabled ? "Enabled" : "Disabled"} • Updated ${esc(relativeTime(entry.updated_at))}</span>
-      </div>
-      <div class="policy-actions">
-        <button type="button" class="toggle-button ${entry.enabled ? "active" : ""}" data-scope="ptrace" data-action="toggle" data-agent="${esc(entry.agent_id || "")}">
-          ${entry.enabled ? "Disable" : "Enable"}
-        </button>
-        <button type="button" data-scope="ptrace" data-action="remove" data-agent="${esc(entry.agent_id || "")}">Remove</button>
-      </div>
-    `;
-    root.appendChild(card);
-  }
+  if (!items.length) { root.appendChild(createEmptyState("Ptrace deny is off", "Enable to block process tracing via ptrace_access_check LSM.")); return; }
+  for (const e of items) root.appendChild(policyCard(e.agent_id || "Global", `${e.agent_id ? "Scoped: "+e.agent_id : "Global"} • ${e.enabled?"Enabled":"Disabled"}`, e, "ptrace", { agent: e.agent_id || "" }));
 }
 
-function renderDetectorCatalog(items) {
-  const root = document.getElementById("detector-list");
+/* ---- render: detectors page ---- */
+
+function renderDetectorsPage(items) {
+  const root = document.getElementById("detector-list-page");
   root.innerHTML = "";
-
-  if (!items.length) {
-    root.appendChild(createEmptyState("No detectors loaded", "Add detector TOML files under manager/detectors and restart or refresh the manager."));
-    return;
-  }
-
-  for (const detector of items) {
-    const severity = severityClass(detector.severity);
+  if (!items.length) { root.appendChild(createEmptyState("No detectors loaded", "Add TOML files under manager/detectors/ — they auto-load.")); return; }
+  for (const d of items) {
     const card = document.createElement("div");
     card.className = "detector-item";
-    card.innerHTML = `
-      <div class="detector-item-top">
-        <strong>${esc(detector.name)}</strong>
-        <span class="pill ${severity}">${esc(detector.severity)}</span>
-      </div>
-      <p>${esc(detector.description || "Custom detector")}</p>
-      <div class="detector-item-meta">
-        <span class="mono">${esc(detector.id)}</span>
-        <span>${formatNumber(detector.hit_count)} hits${detector.threshold_count > 1 ? ` • ${esc(detector.threshold_count)}/${esc(detector.threshold_window_secs)}s` : ""}</span>
-      </div>
-      <div class="detector-tags">
-        ${(detector.tags || []).map((tag) => `<span class="mini-tag">${esc(tag)}</span>`).join("")}
-      </div>
-    `;
+    card.innerHTML = `<div class="detector-item-top"><strong>${esc(d.name)}</strong><span class="pill ${severityClass(d.severity)}">${esc(d.severity)}</span></div><p>${esc(d.description)}</p><div class="detector-item-meta"><span class="mono">${esc(d.id)}</span><span>${formatNumber(d.hit_count)} hits${d.threshold_count > 1 ? ` • ${esc(d.threshold_count)}/${esc(d.threshold_window_secs)}s` : ""}</span></div><div class="detector-tags">${(d.tags || []).map(t => `<span class="mini-tag">${esc(t)}</span>`).join("")}</div>`;
     root.appendChild(card);
   }
 }
+
+/* ---- render: severity ---- */
 
 function renderSeverity(items) {
   const root = document.getElementById("severity-chart");
   root.innerHTML = "";
   const counts = { critical: 0, warning: 0, info: 0 };
-  for (const evt of items) {
-    counts[severityClass(evt.severity)] += 1;
-  }
-
-  const rows = [
-    { key: "critical", label: "Critical", copy: "Blocked actions and high-risk behavior", color: "var(--critical)" },
-    { key: "warning", label: "Warning", copy: "Suspicious kernel activity worth review", color: "var(--warning)" },
-    { key: "info", label: "Info", copy: "Observed telemetry and lower-risk signals", color: "var(--info)" },
-  ];
-
-  for (const row of rows) {
+  for (const evt of items) counts[severityClass(evt.severity)] += 1;
+  for (const [key, label, copy, color] of [
+    ["critical", "Critical", "Blocked actions and high-risk", "var(--critical)"],
+    ["warning", "Warning", "Suspicious activity worth review", "var(--warning)"],
+    ["info", "Info", "Observed telemetry", "var(--info)"],
+  ]) {
     const el = document.createElement("div");
     el.className = "legend-row";
-    el.innerHTML = `
-      <span class="legend-dot" style="background:${row.color}"></span>
-      <div class="legend-label">
-        <strong>${row.label}</strong>
-        <span>${row.copy}</span>
-      </div>
-      <span class="legend-value">${formatNumber(counts[row.key])}</span>
-    `;
+    el.innerHTML = `<span class="legend-dot" style="background:${color}"></span><div class="legend-label"><strong>${label}</strong><span>${copy}</span></div><span class="legend-value">${formatNumber(counts[key])}</span>`;
     root.appendChild(el);
   }
 }
 
+/* ---- render: top detectors ---- */
+
 function renderTopDetectors(items) {
   const root = document.getElementById("top-detectors-chart");
   root.innerHTML = "";
-
-  if (!items.length) {
-    root.appendChild(createEmptyState("No detector statistics yet", "Load detector files and generate hits to see which rules fire most often."));
-    return;
-  }
-
-  const ranked = [...items]
-    .sort((a, b) => Number(b.hit_count || 0) - Number(a.hit_count || 0))
-    .slice(0, 5);
-  const maxHits = Math.max(1, ...ranked.map((item) => Number(item.hit_count || 0)));
-
+  if (!items.length) { root.appendChild(createEmptyState("No statistics yet", "Load detectors and generate hits.")); return; }
+  const ranked = [...items].sort((a, b) => Number(b.hit_count || 0) - Number(a.hit_count || 0)).slice(0, 3);
+  const maxHits = Math.max(1, ...ranked.map(i => Number(i.hit_count || 0)));
   for (const item of ranked) {
     const row = document.createElement("div");
     row.className = "rank-item";
-    row.innerHTML = `
-      <div class="rank-item-head">
-        <div>
-          <strong>${esc(item.name)}</strong>
-          <span class="mono">${esc(item.id)}</span>
-        </div>
-        <span class="legend-value">${formatNumber(item.hit_count)}</span>
-      </div>
-      <div class="rank-item-bar">
-        <div class="rank-item-bar-fill" style="width:${Math.max(8, Math.round((Number(item.hit_count || 0) / maxHits) * 100))}%"></div>
-      </div>
-    `;
+    row.innerHTML = `<div class="rank-item-head"><div><strong>${esc(item.name)}</strong><span class="mono">${esc(item.id)}</span></div><span class="legend-value">${formatNumber(item.hit_count)}</span></div><div class="rank-item-bar"><div class="rank-item-bar-fill" style="width:${Math.max(8, Math.round((Number(item.hit_count || 0) / maxHits) * 100))}%"></div></div>`;
     root.appendChild(row);
   }
 }
 
-function buildVolumeBuckets(items) {
-  const bucketCount = 8;
-  const hours = state.rangeHours > 0 ? state.rangeHours : 24 * 30;
-  const bucketSize = Math.max(1, Math.floor(hours / bucketCount));
-  const now = Date.now();
-  const buckets = Array.from({ length: bucketCount }, (_, idx) => ({
-    label: idx === bucketCount - 1 ? "Now" : `-${hours - bucketSize * (idx + 1)}h`,
-    value: 0,
-  }));
+/* ---- render: detection drawer ---- */
 
-  for (const evt of items) {
-    const ts = new Date(evt.ts).getTime();
-    if (Number.isNaN(ts)) continue;
-    const ageHours = Math.floor((now - ts) / (1000 * 60 * 60));
-    if (ageHours < 0 || ageHours > hours) continue;
-    const index = Math.min(bucketCount - 1, bucketCount - 1 - Math.floor(ageHours / bucketSize));
-    buckets[index].value += 1;
-  }
-  return buckets;
-}
-
-function renderVolume(items) {
-  const root = document.getElementById("volume-chart");
-  root.innerHTML = "";
-  const buckets = buildVolumeBuckets(items);
-  const maxValue = Math.max(1, ...buckets.map((bucket) => bucket.value));
-
-  for (const bucket of buckets) {
-    const group = document.createElement("div");
-    group.className = "bar-group";
-    const height = Math.max(10, Math.round((bucket.value / maxValue) * 100));
-    group.innerHTML = `
-      <div class="bar-value">${formatNumber(bucket.value)}</div>
-      <div class="bar-track">
-        <div class="bar-fill" style="height:${height}%"></div>
-      </div>
-      <div class="bar-label">${esc(bucket.label)}</div>
-    `;
-    root.appendChild(group);
-  }
-}
-
-function renderSummary(summary, agents, events, detections, detectors, blockedIpv4, blockedBindPorts) {
-  const online = agents.filter((agent) => deriveAgentStatus(agent) === "online").length;
-  const offline = Math.max(0, agents.length - online);
-  const blocked = events.filter((evt) => actionClass(evt.action) === "block").length;
-  const scopeLabel = state.rangeHours > 0 ? `${state.rangeHours}h scope` : "all available data";
-
-  setText("agents-count", formatNumber(online));
-  setText("events-count", formatNumber(events.length));
-  setText("blocked-count", formatNumber(blocked));
-  setText("policy-count", formatNumber(blockedIpv4.filter((entry) => entry.enabled).length));
-  setText("bind-count", formatNumber(blockedBindPorts.filter((entry) => entry.enabled).length));
-  setText("detections-count", formatNumber(detections.length));
-
-  setText("agents-meta", `${formatNumber(agents.length)} total • ${offline} offline`);
-  setText("events-meta", `${scopeLabel} • ${formatNumber(summary?.total_events || 0)} stored total`);
-  setText("blocked-meta", blocked ? `${blocked} blocked actions in view` : "No blocked actions in current scope");
-  setText("policy-meta", `${formatNumber(summary?.blocked_ipv4_count || 0)} IPv4 • ${formatNumber(summary?.blocked_exec_path_count || 0)} exec`);
-  setText("bind-meta", `${formatNumber(summary?.blocked_bind_port_count || 0)} bind • ${formatNumber(summary?.protected_write_target_count || 0)} write • ${formatNumber(summary?.ptrace_deny_count || 0)} ptrace`);
-  setText("detections-meta", `${formatNumber(detectors.length)} detectors loaded`);
-  setText("fleet-chip", `${formatNumber(agents.length)} agents`);
-  setText("detector-chip", `${formatNumber(detections.length)} hits`);
-  setText("catalog-chip", `${formatNumber(detectors.length)} loaded`);
-  setText("volume-label", state.rangeHours > 0 ? `${state.rangeHours}h window` : "full history");
-}
-
-function openDetectionDrawer(id) {
-  state.selectedDetectionId = id;
-  renderDetectionDrawer();
-}
-
-function closeDetectionDrawer() {
-  state.selectedDetectionId = null;
-  renderDetectionDrawer();
-}
+function openDetectionDrawer(id) { state.selectedDetectionId = id; renderDetectionDrawer(); }
+function closeDetectionDrawer() { state.selectedDetectionId = null; renderDetectionDrawer(); }
 
 function renderDetectionDrawer() {
   const backdrop = document.getElementById("detection-backdrop");
   const drawer = document.getElementById("detection-drawer");
   const title = document.getElementById("drawer-title");
   const body = document.getElementById("drawer-body");
-  const hit = state.detections.find((item) => String(item.id) === String(state.selectedDetectionId));
-
-  if (!hit) {
-    backdrop.classList.add("hidden");
-    drawer.classList.add("hidden");
-    drawer.setAttribute("aria-hidden", "true");
-    title.textContent = "No detection selected";
-    body.innerHTML = "";
-    return;
-  }
-
-  const sourceEvent = state.events.find((item) => Number(item.id) === Number(hit.event_id));
-  const severity = severityClass(hit.severity);
-  const action = actionClass(hit.action);
+  const hit = state.detections.find(item => String(item.id) === String(state.selectedDetectionId));
+  if (!hit) { backdrop.classList.add("hidden"); drawer.classList.add("hidden"); drawer.setAttribute("aria-hidden", "true"); title.textContent = "No detection selected"; body.innerHTML = ""; return; }
+  const sourceEvent = state.events.find(item => Number(item.id) === Number(hit.event_id));
   const destination = sourceEvent?.dst_ip ? `${sourceEvent.dst_ip}:${sourceEvent.dst_port || 0}` : "-";
   const sourceSubject = sourceEvent?.subject || hit.subject || "-";
   const process = sourceEvent?.process_path || sourceEvent?.comm || "-";
-
-  backdrop.classList.remove("hidden");
-  drawer.classList.remove("hidden");
-  drawer.setAttribute("aria-hidden", "false");
+  backdrop.classList.remove("hidden"); drawer.classList.remove("hidden"); drawer.setAttribute("aria-hidden", "false");
   title.textContent = hit.detector_name;
   body.innerHTML = `
-    <section class="drawer-card">
-      <span class="pill ${severity}">${esc(hit.severity)}</span>
-      <span class="pill ${action}">${esc(hit.action)}</span>
-      <p class="drawer-summary">${esc(hit.summary)}</p>
-      <span class="drawer-copy">Detector <code>${esc(hit.detector_id)}</code> fired from ${esc(hit.event_type)} on agent <code>${esc(hit.agent_id)}</code>.</span>
-      <span class="drawer-copy">${hit.match_count > 1 ? `Threshold burst count ${esc(hit.match_count)} on key ${esc(hit.correlation_key || "-")}` : "Single-event detection"}</span>
-    </section>
-
-    <section class="drawer-card-grid">
-      <article class="drawer-card">
-        <strong>Detection</strong>
-        <span class="drawer-muted">Timestamp</span>
-        <code>${esc(formatTs(hit.ts))}</code>
-      </article>
-      <article class="drawer-card">
-        <strong>Source Event</strong>
-        <span class="drawer-muted">Event ID</span>
-        <code>${esc(hit.event_id || "-")}</code>
-      </article>
-    </section>
-
-    <section class="drawer-card">
-      <strong>Detection Metadata</strong>
-      <div class="drawer-list">
-        <div class="drawer-row">
-          <span class="drawer-row-label">Agent</span>
-          <span class="drawer-row-value">${esc(hit.agent_id)}</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">Detector ID</span>
-          <span class="drawer-row-value">${esc(hit.detector_id)}</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">Event Type</span>
-          <span class="drawer-row-value">${esc(hit.event_type)}</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">Action</span>
-          <span class="drawer-row-value">${esc(hit.action)}</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">Subject</span>
-          <span class="drawer-row-value">${esc(sourceSubject)}</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">Match Count</span>
-          <span class="drawer-row-value">${esc(hit.match_count || 1)}</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="drawer-card">
-      <strong>Kernel Event Context</strong>
-      <div class="drawer-list">
-        <div class="drawer-row">
-          <span class="drawer-row-label">Process</span>
-          <span class="drawer-row-value">${esc(process)} (${esc(sourceEvent?.pid || 0)})</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">Parent PID</span>
-          <span class="drawer-row-value">${esc(sourceEvent?.ppid || 0)}</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">Ancestry</span>
-          <span class="drawer-row-value">${esc(sourceEvent?.ancestry || "-")}</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">UID</span>
-          <span class="drawer-row-value">${esc(sourceEvent?.uid || 0)}</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">Destination</span>
-          <span class="drawer-row-value">${esc(destination)}</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">Arg0 / Arg1</span>
-          <span class="drawer-row-value">${esc(sourceEvent?.arg0 || 0)} / ${esc(sourceEvent?.arg1 || 0)}</span>
-        </div>
-        <div class="drawer-row">
-          <span class="drawer-row-label">Namespaces</span>
-          <span class="drawer-row-value">${esc(sourceEvent?.pid_ns || "-")} | ${esc(sourceEvent?.mount_ns || "-")} | ${esc(sourceEvent?.net_ns || "-")}</span>
-        </div>
-      </div>
-    </section>
-  `;
+    <section class="drawer-card"><span class="pill ${severityClass(hit.severity)}">${esc(hit.severity)}</span><span class="pill ${actionClass(hit.action)}">${esc(hit.action)}</span><p class="drawer-summary">${esc(hit.summary)}</p></section>
+    <section class="drawer-card-grid"><article class="drawer-card"><strong>Detection</strong><span class="drawer-muted">Timestamp</span><code>${esc(formatTs(hit.ts))}</code></article><article class="drawer-card"><strong>Source</strong><span class="drawer-muted">Event ID</span><code>${esc(hit.event_id || "-")}</code></article></section>
+    <section class="drawer-card"><strong>Details</strong><div class="drawer-list">${drawerRow("Agent", hit.agent_id)}${drawerRow("Detector", hit.detector_id)}${drawerRow("Type", hit.event_type)}${drawerRow("Subject", sourceSubject)}${drawerRow("Process", `${process} (${sourceEvent?.pid || 0})`)}${drawerRow("UID", sourceEvent?.uid || 0)}${drawerRow("Ancestry", sourceEvent?.ancestry || "-")}${drawerRow("Destination", destination)}</div></section>`;
 }
+
+function drawerRow(label, value) { return `<div class="drawer-row"><span class="drawer-row-label">${label}</span><span class="drawer-row-value">${esc(value)}</span></div>`; }
+
+function emptyRow(cols, title, copy) {
+  const tr = document.createElement("tr");
+  const td = document.createElement("td");
+  td.colSpan = cols;
+  td.appendChild(createEmptyState(title, copy));
+  tr.appendChild(td);
+  return tr;
+}
+
+/* ---- summary ---- */
+
+function renderSummary() {
+  const events = filterEvents(state.events);
+  const agents = state.agents;
+  const online = agents.filter(a => deriveAgentStatus(a) === "online").length;
+  const offline = Math.max(0, agents.length - online);
+  const blocked = events.filter(e => actionClass(e.action) === "block").length;
+  const scopeLabel = state.rangeHours > 0 ? `${state.rangeHours}h` : "all";
+  setText("agents-count", formatNumber(online));
+  setText("events-count", formatNumber(state.summary?.total_events || 0));
+  setText("blocked-count", formatNumber(blocked));
+  setText("detections-count", formatNumber(state.summary?.total_detections || 0));
+  setText("agents-meta", `${formatNumber(agents.length)} total • ${offline} offline`);
+  setText("events-meta", `${scopeLabel} • ${formatNumber(state.summary?.total_events || 0)} stored`);
+  setText("blocked-meta", blocked ? `${blocked} blocked` : "No blocks");
+  setText("detections-meta", `${formatNumber(state.detectors.length)} detectors`);
+  setText("detector-chip", `${formatNumber(filterDetections(state.detections).length)} hits`);
+  setText("catalog-chip-page", `${formatNumber(state.detectors.length)} loaded`);
+  setText("agents-fleet-chip", `${formatNumber(agents.length)} agents`);
+  setText("events-page-chip", `${formatNumber(events.length)} events`);
+  setText("topbar-events", `${formatNumber(events.length)} events`);
+  setText("topbar-agents", `${formatNumber(agents.length)} agents`);
+}
+
+/* ---- apply ---- */
 
 function applyState() {
   const agents = filterAgents(state.agents);
   const events = filterEvents(state.events);
   const detections = filterDetections(state.detections);
   const detectors = filterDetectors(state.detectors);
-  const detectionEventIds = new Set(detections.map((item) => Number(item.event_id)).filter(Boolean));
+  const detectionEventIds = new Set(detections.map(i => Number(i.event_id)).filter(Boolean));
 
-  renderSummary(
-    state.summary,
-    state.agents,
-    events,
-    detections,
-    state.detectors,
-    state.blockedIpv4,
-    state.blockedBindPorts,
-  );
-  renderAgents(agents);
+  renderSummary();
+  renderAgentsPage(state.agents);
   renderDetections(detections);
-  renderEvents(events, detectionEventIds);
-  renderDetectorCatalog(detectors);
+  renderEventsPage(events, detectionEventIds);
+  renderDetectorsPage(detectors);
   renderIpv4Policy(state.blockedIpv4);
   renderBindPolicy(state.blockedBindPorts);
   renderExecPolicy(state.blockedExecPaths);
@@ -734,20 +356,27 @@ function applyState() {
   renderPtracePolicy(state.ptraceDenies);
   renderSeverity(detections.length ? detections : events);
   renderTopDetectors(state.detectors);
-  renderVolume(events);
   renderDetectionDrawer();
+  if (state.page === "performance") renderPerformancePage();
+  if (state.page === "benchmarks") renderBenchmarksPage();
 }
 
+/* ---- refresh ---- */
+
 async function refresh() {
-  const [summary, agents, events, detections, detectors, policy] = await Promise.all([
+  const hours = state.rangeHours > 0 ? state.rangeHours : "";
+  const hoursParam = hours ? `&hours=${hours}` : "";
+  const limit = hours ? "5000" : "200";
+
+  const [summary, agents, events, detections, detectors, policy, tokenRes] = await Promise.all([
     fetchJson("/api/v1/metrics/summary"),
     fetchJson("/api/v1/agents"),
-    fetchJson("/api/v1/events?limit=200"),
-    fetchJson("/api/v1/detections?limit=200"),
+    fetchJson(`/api/v1/events?limit=${limit}${hoursParam}`),
+    fetchJson(`/api/v1/detections?limit=${limit}${hoursParam}`),
     fetchJson("/api/v1/detectors"),
     fetchJson("/api/v1/policy"),
+    fetchJson("/api/v1/agent-token").catch(() => ({ agent_token: "" })),
   ]);
-
   state.summary = summary;
   state.agents = agents.items || [];
   state.events = events.items || [];
@@ -758,287 +387,435 @@ async function refresh() {
   state.blockedExecPaths = policy.blocked_exec_path_items || [];
   state.protectedWriteTargets = policy.protected_write_target_items || [];
   state.ptraceDenies = policy.ptrace_deny_items || [];
-
-  if (state.selectedDetectionId && !state.detections.some((item) => String(item.id) === String(state.selectedDetectionId))) {
-    state.selectedDetectionId = null;
+  state.agentToken = tokenRes.agent_token || "";
+  if (state.selectedDetectionId && !state.detections.some(i => String(i.id) === String(state.selectedDetectionId))) state.selectedDetectionId = null;
+  
+  if (state.page === "performance") {
+    const metricsRes = await fetchJson("/api/v1/agent-metrics");
+    state.agentMetrics = metricsRes.items || [];
+    // Fetch history for each agent
+    for (const agent of state.agents) {
+      const histRes = await fetchJson(`/api/v1/agent-metrics?agent_id=${agent.id}`);
+      agent._metricsHistory = (histRes.items || []).reverse();
+    }
+  } else {
+    state.agentMetrics = [];
   }
 
+  if (state.page === "benchmarks") {
+    state.benchmarks = await fetchJson("/api/v1/benchmarks");
+  }
+  
   applyState();
+  buildInstallCommand();
 }
 
-async function submitIpv4Policy(ip, enabled, agentId = "") {
-  await fetchJson("/api/v1/policy/blocked-ipv4", {
+/* ---- policy API ---- */
+
+async function submitIpv4Policy(ip, enabled, agentId = "") { await fetchJson("/api/v1/policy/blocked-ipv4", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ip, enabled, agent_id: agentId }) }); }
+async function deleteIpv4Policy(ip, agentId = "") { await fetchJson("/api/v1/policy/blocked-ipv4", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ip, agent_id: agentId }) }); }
+async function submitBindPolicy(port, enabled, agentId = "") { await fetchJson("/api/v1/policy/blocked-bind-port", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ port, enabled, agent_id: agentId }) }); }
+async function deleteBindPolicy(port, agentId = "") { await fetchJson("/api/v1/policy/blocked-bind-port", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ port, agent_id: agentId }) }); }
+async function submitExecPolicy(path, enabled, agentId = "") { await fetchJson("/api/v1/policy/blocked-exec-path", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path, enabled, agent_id: agentId }) }); }
+async function deleteExecPolicy(path, agentId = "") { await fetchJson("/api/v1/policy/blocked-exec-path", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path, agent_id: agentId }) }); }
+async function submitWritePolicy(target, enabled, agentId = "") { await fetchJson("/api/v1/policy/protected-write-target", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ target, enabled, agent_id: agentId }) }); }
+async function deleteWritePolicy(target, agentId = "") { await fetchJson("/api/v1/policy/protected-write-target", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ target, agent_id: agentId }) }); }
+async function submitPtracePolicy(enabled, agentId = "") { await fetchJson("/api/v1/policy/deny-ptrace", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled, agent_id: agentId }) }); }
+async function deletePtracePolicy(agentId = "") { await fetchJson("/api/v1/policy/deny-ptrace", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ agent_id: agentId }) }); }
+
+/* ---- agent management API ---- */
+
+async function registerAgent(hostname, ip, kernel, version, token) {
+  return await fetchJson("/api/v1/agents/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ip, enabled, agent_id: agentId }),
+    body: JSON.stringify({ hostname, ip, kernel, version, agent_token: token }),
   });
 }
 
-async function deleteIpv4Policy(ip, agentId = "") {
-  await fetchJson("/api/v1/policy/blocked-ipv4", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ip, agent_id: agentId }),
-  });
+/* ---- agent install wizard ---- */
+
+function buildInstallCommand() {
+  const codeEl = document.getElementById("install-command");
+  if (!codeEl) return;
+  const token = state.agentToken;
+  const managerHost = window.location.hostname || "MANAGER_IP";
+  const managerPort = window.location.port || "8080";
+  const managerUrl = `http://${managerHost}:${managerPort}`;
+  codeEl.textContent = token
+    ? `curl -sSL ${managerUrl}/install.sh | sudo bash -s -- --token ${token} --manager-url ${managerUrl}`
+    : `curl -sSL ${managerUrl}/install.sh | sudo bash -s -- --manager-url ${managerUrl}`;
 }
 
-async function submitBindPolicy(port, enabled, agentId = "") {
-  await fetchJson("/api/v1/policy/blocked-bind-port", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ port, enabled, agent_id: agentId }),
+document.getElementById("copy-install-btn").addEventListener("click", () => {
+  const code = document.getElementById("install-command").textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const fb = document.getElementById("copy-feedback");
+    fb.style.display = "inline";
+    setTimeout(() => { fb.style.display = "none"; }, 2000);
+  }).catch(() => {
+    const textarea = document.createElement("textarea");
+    textarea.value = code;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+    const fb = document.getElementById("copy-feedback");
+    fb.style.display = "inline";
+    setTimeout(() => { fb.style.display = "none"; }, 2000);
   });
-}
-
-async function deleteBindPolicy(port, agentId = "") {
-  await fetchJson("/api/v1/policy/blocked-bind-port", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ port, agent_id: agentId }),
-  });
-}
-
-async function submitExecPolicy(path, enabled, agentId = "") {
-  await fetchJson("/api/v1/policy/blocked-exec-path", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, enabled, agent_id: agentId }),
-  });
-}
-
-async function deleteExecPolicy(path, agentId = "") {
-  await fetchJson("/api/v1/policy/blocked-exec-path", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, agent_id: agentId }),
-  });
-}
-
-async function submitWritePolicy(target, enabled, agentId = "") {
-  await fetchJson("/api/v1/policy/protected-write-target", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ target, enabled, agent_id: agentId }),
-  });
-}
-
-async function deleteWritePolicy(target, agentId = "") {
-  await fetchJson("/api/v1/policy/protected-write-target", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ target, agent_id: agentId }),
-  });
-}
-
-async function submitPtracePolicy(enabled, agentId = "") {
-  await fetchJson("/api/v1/policy/deny-ptrace", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ enabled, agent_id: agentId }),
-  });
-}
-
-async function deletePtracePolicy(agentId = "") {
-  await fetchJson("/api/v1/policy/deny-ptrace", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ agent_id: agentId }),
-  });
-}
-
-document.getElementById("search-input").addEventListener("input", (event) => {
-  state.search = event.target.value;
-  applyState();
 });
 
-document.getElementById("time-range").addEventListener("change", (event) => {
-  state.rangeHours = Number(event.target.value || 24);
-  applyState();
-});
+/* ---- event listeners ---- */
 
-document.getElementById("policy-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const input = document.getElementById("ip-input");
-  const agentInput = document.getElementById("ip-agent-input");
-  const ip = input.value.trim();
-  const agentId = agentInput.value.trim();
+document.getElementById("search-input").addEventListener("input", e => { state.search = e.target.value; applyState(); });
+document.getElementById("time-range").addEventListener("change", e => { state.rangeHours = Number(e.target.value || 24); applyState(); });
+
+document.getElementById("policy-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const ip = document.getElementById("ip-input").value.trim();
+  const agentId = document.getElementById("ip-agent-input").value.trim();
   if (!ip) return;
   await submitIpv4Policy(ip, true, agentId);
-  input.value = "";
-  agentInput.value = "";
+  document.getElementById("ip-input").value = "";
+  document.getElementById("ip-agent-input").value = "";
   await refresh();
 });
 
-document.getElementById("bind-policy-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const input = document.getElementById("bind-port-input");
-  const agentInput = document.getElementById("bind-agent-input");
-  const port = Number(input.value);
-  const agentId = agentInput.value.trim();
+document.getElementById("bind-policy-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const port = Number(document.getElementById("bind-port-input").value);
+  const agentId = document.getElementById("bind-agent-input").value.trim();
   if (!port || port < 1 || port > 65535) return;
   await submitBindPolicy(port, true, agentId);
-  input.value = "";
-  agentInput.value = "";
+  document.getElementById("bind-port-input").value = "";
+  document.getElementById("bind-agent-input").value = "";
   await refresh();
 });
 
-document.getElementById("exec-policy-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const input = document.getElementById("exec-path-input");
-  const agentInput = document.getElementById("exec-agent-input");
-  const path = input.value.trim();
-  const agentId = agentInput.value.trim();
+document.getElementById("exec-policy-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const path = document.getElementById("exec-path-input").value.trim();
+  const agentId = document.getElementById("exec-agent-input").value.trim();
   if (!path) return;
   await submitExecPolicy(path, true, agentId);
-  input.value = "";
-  agentInput.value = "";
+  document.getElementById("exec-path-input").value = "";
+  document.getElementById("exec-agent-input").value = "";
   await refresh();
 });
 
-document.getElementById("write-policy-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const input = document.getElementById("write-target-input");
-  const agentInput = document.getElementById("write-agent-input");
-  const target = input.value.trim();
-  const agentId = agentInput.value.trim();
+document.getElementById("write-policy-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const target = document.getElementById("write-target-input").value.trim();
+  const agentId = document.getElementById("write-agent-input").value.trim();
   if (!target) return;
   await submitWritePolicy(target, true, agentId);
-  input.value = "";
-  agentInput.value = "";
+  document.getElementById("write-target-input").value = "";
+  document.getElementById("write-agent-input").value = "";
   await refresh();
 });
 
-document.getElementById("ptrace-policy-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const agentInput = document.getElementById("ptrace-agent-input");
-  const agentId = agentInput.value.trim();
+document.getElementById("ptrace-policy-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const agentId = document.getElementById("ptrace-agent-input").value.trim();
   await submitPtracePolicy(true, agentId);
-  agentInput.value = "";
+  document.getElementById("ptrace-agent-input").value = "";
   await refresh();
 });
 
-document.getElementById("policy-list").addEventListener("click", async (event) => {
-  const button = event.target.closest("button[data-action]");
-  if (!button) return;
-  const ip = button.dataset.ip;
-  const agentId = button.dataset.agent || "";
-  const action = button.dataset.action;
-  if (!ip || !action) return;
+/* ---- agent register form ---- */
 
-  if (action === "toggle") {
-    const current = state.blockedIpv4.find((entry) => entry.ip === ip && (entry.agent_id || "") === agentId);
-    if (!current) return;
-    await submitIpv4Policy(ip, !current.enabled, agentId);
+document.getElementById("manual-register-btn").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const fb = document.getElementById("reg-feedback");
+  fb.textContent = "";
+  fb.className = "form-feedback";
+  try {
+    const result = await registerAgent(
+      document.getElementById("reg-hostname").value.trim(),
+      document.getElementById("reg-ip").value.trim(),
+      document.getElementById("reg-kernel").value.trim(),
+      document.getElementById("reg-version").value.trim(),
+      state.agentToken,
+    );
+    fb.textContent = `Agent registered: ${result.agent_id}`;
+    fb.className = "form-feedback success";
+    document.getElementById("reg-hostname").value = "";
+    document.getElementById("reg-ip").value = "";
+    document.getElementById("reg-kernel").value = "";
+    document.getElementById("reg-version").value = "";
     await refresh();
-    return;
-  }
-
-  if (action === "remove") {
-    await deleteIpv4Policy(ip, agentId);
-    await refresh();
-  }
-});
-
-document.getElementById("bind-policy-list").addEventListener("click", async (event) => {
-  const button = event.target.closest("button[data-action]");
-  if (!button) return;
-  const port = Number(button.dataset.port);
-  const agentId = button.dataset.agent || "";
-  const action = button.dataset.action;
-  if (!port || !action) return;
-
-  if (action === "toggle") {
-    const current = state.blockedBindPorts.find((entry) => Number(entry.port) === port && (entry.agent_id || "") === agentId);
-    if (!current) return;
-    await submitBindPolicy(port, !current.enabled, agentId);
-    await refresh();
-    return;
-  }
-
-  if (action === "remove") {
-    await deleteBindPolicy(port, agentId);
-    await refresh();
+  } catch (err) {
+    fb.textContent = `Error: ${err.message}`;
+    fb.className = "form-feedback error";
   }
 });
 
-document.getElementById("exec-policy-list").addEventListener("click", async (event) => {
-  const button = event.target.closest("button[data-action]");
-  if (!button) return;
-  const path = button.dataset.path;
-  const agentId = button.dataset.agent || "";
-  const action = button.dataset.action;
-  if (!path || !action) return;
+/* ---- agent remove form ---- */
 
-  if (action === "toggle") {
-    const current = state.blockedExecPaths.find((entry) => entry.path === path && (entry.agent_id || "") === agentId);
-    if (!current) return;
-    await submitExecPolicy(path, !current.enabled, agentId);
+const removeForm = document.getElementById("agent-remove-form");
+if (removeForm) {
+  removeForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const fb = document.getElementById("remove-feedback");
+  fb.textContent = "";
+  fb.className = "form-feedback";
+  const agentId = document.getElementById("remove-agent-id").value.trim();
+  if (!agentId) return;
+  try {
+    await fetchJson("/api/v1/agents", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ agent_id: agentId }) });
+    fb.textContent = `Agent ${agentId} removed.`;
+    fb.className = "form-feedback success";
+    document.getElementById("agent-remove-form").reset();
     await refresh();
-    return;
-  }
-
-  if (action === "remove") {
-    await deleteExecPolicy(path, agentId);
-    await refresh();
-  }
-});
-
-document.getElementById("write-policy-list").addEventListener("click", async (event) => {
-  const button = event.target.closest("button[data-action]");
-  if (!button) return;
-  const target = button.dataset.target;
-  const agentId = button.dataset.agent || "";
-  const action = button.dataset.action;
-  if (!target || !action) return;
-
-  if (action === "toggle") {
-    const current = state.protectedWriteTargets.find((entry) => entry.target === target && (entry.agent_id || "") === agentId);
-    if (!current) return;
-    await submitWritePolicy(target, !current.enabled, agentId);
-    await refresh();
-    return;
-  }
-
-  if (action === "remove") {
-    await deleteWritePolicy(target, agentId);
-    await refresh();
+  } catch (err) {
+    fb.textContent = `Error: ${err.message}`;
+    fb.className = "form-feedback error";
   }
 });
+}
 
-document.getElementById("ptrace-policy-list").addEventListener("click", async (event) => {
-  const button = event.target.closest("button[data-action]");
-  if (!button) return;
-  const agentId = button.dataset.agent || "";
-  const action = button.dataset.action;
-  if (!action) return;
+/* ---- agents table: remove button ---- */
 
-  if (action === "toggle") {
-    const current = state.ptraceDenies.find((entry) => (entry.agent_id || "") === agentId);
-    if (!current) return;
-    await submitPtracePolicy(!current.enabled, agentId);
+const agentsFullTbody = document.querySelector("#agents-full-table tbody");
+if (agentsFullTbody) {
+  agentsFullTbody.addEventListener("click", async e => {
+  const btn = e.target.closest("[data-remove-agent]");
+  if (!btn) return;
+  const id = btn.dataset.removeAgent;
+  if (!confirm(`Remove agent ${id}?`)) return;
+  try {
+    await fetchJson("/api/v1/agents", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ agent_id: id }) });
     await refresh();
-    return;
-  }
-
-  if (action === "remove") {
-    await deletePtracePolicy(agentId);
-    await refresh();
-  }
+  } catch (err) { alert(`Error: ${err.message}`); }
 });
 
-document.querySelector("#detections-table tbody").addEventListener("click", (event) => {
-  const row = event.target.closest("tr[data-detection-id]");
-  if (!row) return;
-  openDetectionDrawer(row.dataset.detectionId);
-});
+}
 
+/* ---- policy list click delegation ---- */
+
+function policyClickHandler(listId, submitFn, deleteFn, keyMap) {
+  document.getElementById(listId).addEventListener("click", async e => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const params = {};
+    for (const [ds, fn] of Object.entries(keyMap)) params[fn] = btn.dataset[ds];
+    if (action === "toggle") {
+      const currentSet = { "policy-list": state.blockedIpv4, "bind-policy-list": state.blockedBindPorts, "exec-policy-list": state.blockedExecPaths, "write-policy-list": state.protectedWriteTargets, "ptrace-policy-list": state.ptraceDenies }[listId];
+      const matchFn = {
+        "policy-list": e => e.ip === params.ip && (e.agent_id||"") === (params.agent||""),
+        "bind-policy-list": e => Number(e.port) === Number(params.port) && (e.agent_id||"") === (params.agent||""),
+        "exec-policy-list": e => e.path === params.path && (e.agent_id||"") === (params.agent||""),
+        "write-policy-list": e => e.target === params.target && (e.agent_id||"") === (params.agent||""),
+        "ptrace-policy-list": e => (e.agent_id||"") === (params.agent||""),
+      }[listId];
+      const current = currentSet.find(matchFn);
+      if (!current) return;
+      await submitFn(!current.enabled, params);
+      await refresh();
+    } else if (action === "remove") {
+      await deleteFn(params);
+      await refresh();
+    }
+  });
+}
+
+policyClickHandler("policy-list", (enabled, p) => submitIpv4Policy(p.ip, enabled, p.agent || ""), (p) => deleteIpv4Policy(p.ip, p.agent || ""), { ip: "ip", agent: "agent" });
+policyClickHandler("bind-policy-list", (enabled, p) => submitBindPolicy(Number(p.port), enabled, p.agent || ""), (p) => deleteBindPolicy(Number(p.port), p.agent || ""), { port: "port", agent: "agent" });
+policyClickHandler("exec-policy-list", (enabled, p) => submitExecPolicy(p.path, enabled, p.agent || ""), (p) => deleteExecPolicy(p.path, p.agent || ""), { path: "path", agent: "agent" });
+policyClickHandler("write-policy-list", (enabled, p) => submitWritePolicy(p.target, enabled, p.agent || ""), (p) => deleteWritePolicy(p.target, p.agent || ""), { target: "target", agent: "agent" });
+policyClickHandler("ptrace-policy-list", (enabled, p) => submitPtracePolicy(enabled, p.agent || ""), (p) => deletePtracePolicy(p.agent || ""), { agent: "agent" });
+
+/* ---- agents tabs ---- */
+
+const agentsTabs = document.querySelector(".agents-tabs");
+if (agentsTabs) {
+  agentsTabs.addEventListener("click", e => {
+  const tab = e.target.closest(".agents-tab");
+  if (!tab) return;
+  const tabName = tab.dataset.agentsTab;
+  document.querySelectorAll(".agents-tab").forEach(t => t.classList.toggle("active", t.dataset.agentsTab === tabName));
+  document.querySelectorAll(".agents-tab-panel").forEach(p => p.classList.toggle("active", p.id === `agents-tab-${tabName}`));
+  });
+}
+
+/* ---- detection drawer ---- */
+
+document.querySelector("#detections-table tbody").addEventListener("click", e => {
+  const row = e.target.closest("tr[data-detection-id]");
+  if (row) openDetectionDrawer(row.dataset.detectionId);
+});
 document.getElementById("drawer-close").addEventListener("click", closeDetectionDrawer);
 document.getElementById("detection-backdrop").addEventListener("click", closeDetectionDrawer);
-window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeDetectionDrawer();
-});
+window.addEventListener("keydown", e => { if (e.key === "Escape") closeDetectionDrawer(); });
+
+/* ---- performance page ---- */
+
+function renderPerformancePage() {
+  const container = document.getElementById("perf-agent-cards");
+  if (!container) return;
+
+  const agents = state.agents;
+  const metrics = state.agentMetrics;
+  const metricByAgent = Object.fromEntries(metrics.map(m => [m.agent_id, m]));
+
+  if (!agents.length) {
+    container.innerHTML = `<div class="empty-state"><p class="empty-title">No agents connected</p><p class="empty-copy">Connect an agent to see performance metrics.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = agents.map(agent => {
+    const m = metricByAgent[agent.id] || {};
+    const cpu = (m.cpu_percent || 0).toFixed(2);
+    const rss = (m.rss_mb || 0).toFixed(1);
+    const uptime = m.uptime_secs ? `${Math.floor(m.uptime_secs / 3600)}h ${Math.floor((m.uptime_secs % 3600) / 60)}m` : "-";
+    const history = agent._metricsHistory || [];
+    
+    // Sparkline SVG for CPU
+    const cpuValues = history.slice(-30).map(h => h.cpu_percent || 0);
+    const rssValues = history.slice(-30).map(h => h.rss_mb || 0);
+    
+    return `
+      <div class="perf-agent-card">
+        <div class="perf-card-header">
+          <div>
+            <h3>${esc(agent.hostname)}</h3>
+            <p class="perf-agent-ip">${esc(agent.ip)} · kernel ${esc(agent.kernel)}</p>
+          </div>
+          <span class="perf-agent-status ${agent.status === 'online' ? 'online' : 'offline'}">${esc(agent.status)}</span>
+        </div>
+        
+        <div class="perf-metrics-row">
+          <div class="perf-metric-box">
+            <p class="perf-metric-label">CPU</p>
+            <p class="perf-metric-value">${cpu}%</p>
+            <div class="sparkline-wrap">${renderSparkline(cpuValues, cpuValues.map(v => v > 1 ? 'var(--critical)' : v > 0.1 ? 'var(--warning)' : 'var(--success)'), 200, 28)}</div>
+          </div>
+          <div class="perf-metric-box">
+            <p class="perf-metric-label">RAM (RSS)</p>
+            <p class="perf-metric-value">${rss} MB</p>
+            <div class="sparkline-wrap">${renderSparkline(rssValues, Array(rssValues.length).fill('var(--info)'), 200, 28)}</div>
+          </div>
+          <div class="perf-metric-box">
+            <p class="perf-metric-label">Uptime</p>
+            <p class="perf-metric-value">${uptime}</p>
+            <div class="sparkline-wrap muted">${history.length} data points</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderSparkline(values, colors, width, height) {
+  if (!values.length) return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"></svg>`;
+  
+  const max = Math.max(...values, 0.01);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const step = width / (values.length - 1 || 1);
+  
+  const points = values.map((v, i) => `${(i * step).toFixed(1)},${(height - ((v - min) / range) * height).toFixed(1)}`);
+  
+  return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" preserveAspectRatio="none">
+    <polyline points="${points.join(" ")}" fill="none" stroke="${colors[0] || 'var(--info)'}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+  </svg>`;
+}
+
+/* ---- benchmarks page ---- */
+
+function renderBenchmarksPage() {
+  const b = state.benchmarks;
+  const container = document.getElementById("benchmark-content");
+  if (!container || !b) return;
+
+  const s = b.summary;
+  const l = b.latency;
+  const t = b.throughput;
+  const a = b.accuracy;
+  const r = b.resource_efficiency;
+  const ds = b.detector_stats || [];
+
+  container.innerHTML = `
+    <section class="kpi-grid">
+      <article class="kpi-card">
+        <div><p class="kpi-label">Detection Rate</p><p class="kpi-value">${s.detection_rate_pct}%</p><p class="kpi-meta">${s.total_detections} hits / ${formatNumber(s.total_events)} events</p></div>
+        <div class="kpi-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+      </article>
+      <article class="kpi-card">
+        <div><p class="kpi-label">Precision</p><p class="kpi-value">${a.precision_pct}%</p><p class="kpi-meta">F1 Score: ${a.f1_score}%</p></div>
+        <div class="kpi-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></div>
+      </article>
+      <article class="kpi-card">
+        <div><p class="kpi-label">Recall</p><p class="kpi-value">${a.recall_pct}%</p><p class="kpi-meta">Est. ${a.false_negatives_est} FN / ${a.false_positives_est} FP</p></div>
+        <div class="kpi-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+      </article>
+      <article class="kpi-card">
+        <div><p class="kpi-label">eBPF Hook Latency</p><p class="kpi-value">${l.hook_mean_us} &mu;s</p><p class="kpi-meta">p99: ${l.hook_p99_us} &mu;s</p></div>
+        <div class="kpi-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+      </article>
+    </section>
+
+    <section class="insight-grid">
+      <section class="panel">
+        <div class="panel-header"><div><p class="eyebrow">Timing</p><h2>Processing Pipeline Latency</h2></div></div>
+        <div class="bench-latency-grid">
+          <div class="bench-latency-item"><span class="bench-latency-label">eBPF Hook (mean)</span><span class="bench-latency-value">${l.hook_mean_us} &mu;s</span></div>
+          <div class="bench-latency-item"><span class="bench-latency-label">eBPF Hook (p99)</span><span class="bench-latency-value">${l.hook_p99_us} &mu;s</span></div>
+          <div class="bench-latency-item"><span class="bench-latency-label">Pipeline (mean)</span><span class="bench-latency-value">${l.pipeline_mean_us} &mu;s</span></div>
+          <div class="bench-latency-item"><span class="bench-latency-label">Pipeline (p99)</span><span class="bench-latency-value">${l.pipeline_p99_us} &mu;s</span></div>
+          <div class="bench-latency-item"><span class="bench-latency-label">Ringbuffer Flush</span><span class="bench-latency-value">${l.ringbuffer_flush_us} &mu;s</span></div>
+        </div>
+        <p class="bench-note">${esc(l.note)}</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header"><div><p class="eyebrow">Volume</p><h2>Throughput</h2></div></div>
+        <div class="bench-latency-grid">
+          <div class="bench-latency-item"><span class="bench-latency-label">Peak Events/sec</span><span class="bench-latency-value">${formatNumber(t.events_per_sec_peak)}</span></div>
+          <div class="bench-latency-item"><span class="bench-latency-label">Sustained Events/sec</span><span class="bench-latency-value">${formatNumber(t.events_per_sec_sustained)}</span></div>
+          <div class="bench-latency-item"><span class="bench-latency-label">Detections/sec</span><span class="bench-latency-value">${formatNumber(t.detections_per_sec)}</span></div>
+          <div class="bench-latency-item"><span class="bench-latency-label">Ringbuffer Loss</span><span class="bench-latency-value">${t.ringbuffer_loss_events}</span></div>
+        </div>
+        <p class="bench-note">${esc(t.note)}</p>
+      </section>
+    </section>
+
+    <section class="panel" style="margin-top:20px">
+      <div class="panel-header"><div><p class="eyebrow">Detectors</p><h2>Per-Detector Accuracy</h2></div><span class="panel-chip">${ds.length} detectors</span></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Detector</th><th>Matches</th><th>Avg Match Time</th><th>FP Rate</th></tr></thead>
+        <tbody>${ds.map(d => `<tr><td><code>${esc(d.name)}</code></td><td>${d.matches}</td><td>${d.avg_match_us} &mu;s</td><td>${d.fp_rate_pct}%</td></tr>`).join("")}</tbody>
+      </table></div>
+    </section>
+
+    <section class="insight-grid" style="margin-top:20px">
+      <section class="panel">
+        <div class="panel-header"><div><p class="eyebrow">Classification</p><h2>Accuracy Breakdown</h2></div></div>
+        <div class="bench-accuracy-grid">
+          <div class="bench-acc-box"><p class="bench-acc-label">True Positives</p><p class="bench-acc-value good">${a.true_positives}</p></div>
+          <div class="bench-acc-box"><p class="bench-acc-label">False Positives (est.)</p><p class="bench-acc-value warn">${a.false_positives_est}</p></div>
+          <div class="bench-acc-box"><p class="bench-acc-label">False Negatives (est.)</p><p class="bench-acc-value warn">${a.false_negatives_est}</p></div>
+        </div>
+        <p class="bench-note">${esc(a.note)}</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header"><div><p class="eyebrow">Resources</p><h2>Resource Efficiency</h2></div></div>
+        <div class="bench-latency-grid">
+          <div class="bench-latency-item"><span class="bench-latency-label">CPU per 1K events</span><span class="bench-latency-value">${r.cpu_per_1k_events_pct}%</span></div>
+          <div class="bench-latency-item"><span class="bench-latency-label">RSS per Agent</span><span class="bench-latency-value">${r.rss_per_agent_mb} MB</span></div>
+          <div class="bench-latency-item"><span class="bench-latency-label">RSS Growth/Hour</span><span class="bench-latency-value">${r.rss_growth_mb_per_hour} MB</span></div>
+          <div class="bench-latency-item"><span class="bench-latency-label">Events per MB RAM</span><span class="bench-latency-value">${formatNumber(r.events_per_mb_ram)}</span></div>
+        </div>
+        <p class="bench-note">${esc(r.note)}</p>
+      </section>
+    </section>
+
+    <p class="bench-generated">Generated: ${b.generated_ts}</p>
+  `;
+}
 
 refresh().catch(console.error);
-setInterval(() => {
-  refresh().catch(console.error);
-}, 4000);
+setInterval(() => { refresh().catch(console.error); }, 4000);
