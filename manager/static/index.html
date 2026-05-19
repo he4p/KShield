@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ataree Dashboard</title>
+  <title>KShield — Kernel Threat Detection</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -17,8 +17,8 @@
           </svg>
         </div>
         <div>
-          <h1>Ataree</h1>
-          <p>Kernel Threat Detection SIEM</p>
+          <h1>KShield</h1>
+          <p>eBPF-LSM Threat Detection</p>
         </div>
       </div>
 
@@ -27,21 +27,21 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
           Dashboard
         </button></li>
+        <li><button class="nav-btn" data-page="events">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h4l2-6 4 12 2-6h4"/></svg>
+          Events
+        </button></li>
         <li><button class="nav-btn" data-page="agents">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/></svg>
           Agents
-        </button></li>
-        <li><button class="nav-btn" data-page="policy">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v6c0 4.7 2.9 7.8 7 9 4.1-1.2 7-4.3 7-9V6l-7-3Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
-          Policy
         </button></li>
         <li><button class="nav-btn" data-page="detectors">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
           Detectors
         </button></li>
-        <li><button class="nav-btn" data-page="events">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h4l2-6 4 12 2-6h4"/></svg>
-          Events
+        <li><button class="nav-btn" data-page="policy">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v6c0 4.7 2.9 7.8 7 9 4.1-1.2 7-4.3 7-9V6l-7-3Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          Policy
         </button></li>
         <li><button class="nav-btn" data-page="performance">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M4 20V4"/><path d="M8 20v-4"/><path d="M12 20v-8"/><path d="M16 20V6"/><path d="M20 20v-2"/></svg>
@@ -63,7 +63,7 @@
       <div class="topbar-left">
         <label class="toolbar-field search-field">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input id="search-input" type="search" placeholder="Search across all data..." />
+          <input id="search-input" type="search" placeholder="Search events, agents, detectors..." />
         </label>
       </div>
       <div class="topbar-right">
@@ -71,6 +71,8 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
           <select id="time-range">
             <option value="0">All time</option>
+            <option value="1">Last hour</option>
+            <option value="6">Last 6 hours</option>
             <option value="24">Last 24 hours</option>
             <option value="168">Last 7 days</option>
             <option value="720">Last 30 days</option>
@@ -86,26 +88,26 @@
       <section class="page active" id="page-dashboard">
         <section class="kpi-grid">
           <article class="kpi-card">
-            <div><p class="kpi-label">Online Agents</p><p class="kpi-value" id="agents-count">0</p><p class="kpi-meta" id="agents-meta">0 online, 0 offline</p></div>
+            <div><p class="kpi-label">Online Agents</p><p class="kpi-value" id="agents-count">0</p><p class="kpi-meta" id="agents-meta">0 total</p></div>
             <div class="kpi-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/></svg></div>
           </article>
           <article class="kpi-card">
-            <div><p class="kpi-label">Raw Events</p><p class="kpi-value" id="events-count">0</p><p class="kpi-meta" id="events-meta">No events in scope</p></div>
+            <div><p class="kpi-label">Total Events</p><p class="kpi-value" id="events-count">0</p><p class="kpi-meta" id="events-meta">—</p></div>
             <div class="kpi-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h4l2-6 4 12 2-6h4"/></svg></div>
           </article>
           <article class="kpi-card">
-            <div><p class="kpi-label">Detector Hits</p><p class="kpi-value" id="detections-count">0</p><p class="kpi-meta" id="detections-meta">0 detectors loaded</p></div>
+            <div><p class="kpi-label">Detections</p><p class="kpi-value" id="detections-count">0</p><p class="kpi-meta" id="detections-meta">0 detectors</p></div>
             <div class="kpi-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
           </article>
           <article class="kpi-card">
-            <div><p class="kpi-label">Blocked Actions</p><p class="kpi-value" id="blocked-count">0</p><p class="kpi-meta" id="blocked-meta">No active blocking</p></div>
-            <div class="kpi-icon critical"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m9 9 6 6M15 9l-6 6"/></svg></div>
+            <div><p class="kpi-label">Blocked</p><p class="kpi-value" id="blocked-count">0</p><p class="kpi-meta" id="blocked-meta">—</p></div>
+            <div class="kpi-icon critical"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg></div>
           </article>
         </section>
 
         <section class="insight-grid">
           <section class="panel">
-            <div class="panel-header"><div><p class="eyebrow">Distribution</p><h2>Detection Severity</h2></div></div>
+            <div class="panel-header"><div><p class="eyebrow">Distribution</p><h2>Severity Breakdown</h2></div></div>
             <div id="severity-chart" class="legend-list"></div>
           </section>
           <section class="panel">
@@ -123,14 +125,54 @@
                 <option value="warning">Warning</option>
                 <option value="critical">Critical</option>
               </select>
-              <span class="panel-chip" id="detector-chip">0 hits</span>
+              <span class="panel-chip" id="detector-chip">0 total</span>
             </div>
           </div>
-          <div class="table-wrap"><table id="detections-table"><thead><tr><th>Timestamp</th><th>Detector</th><th>Severity</th><th>Agent</th><th>Event</th><th>Summary</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrap"><table id="detections-table"><thead><tr><th>Time</th><th>Detector</th><th>Severity</th><th>Agent</th><th>Type</th><th>Summary</th></tr></thead><tbody></tbody></table></div>
           <div class="detections-pagination">
-            <button id="detections-prev" class="action-btn" disabled>Previous</button>
+            <button id="detections-prev" class="action-btn" disabled>← Prev</button>
             <span id="detections-page-info">0–0 of 0</span>
-            <button id="detections-next" class="action-btn" disabled>Next</button>
+            <button id="detections-next" class="action-btn" disabled>Next →</button>
+          </div>
+        </section>
+      </section>
+
+      <!-- EVENTS PAGE -->
+      <section class="page" id="page-events">
+        <section class="page-header">
+          <h2>Event Stream</h2>
+          <p>Real-time kernel telemetry from all agents. <span class="live-dot"></span> Live</p>
+        </section>
+
+        <div class="filter-bar">
+          <select id="events-filter-type" class="toolbar-select">
+            <option value="">All Types</option>
+            <option value="socket_connect">socket_connect</option>
+            <option value="socket_bind">socket_bind</option>
+            <option value="file_open">file_open</option>
+            <option value="exec">exec</option>
+            <option value="ptrace">ptrace</option>
+          </select>
+          <select id="events-filter-action" class="toolbar-select">
+            <option value="">All Actions</option>
+            <option value="observe">observe</option>
+            <option value="block">block</option>
+          </select>
+          <select id="events-filter-severity" class="toolbar-select">
+            <option value="">All Severities</option>
+            <option value="info">info</option>
+            <option value="warning">warning</option>
+            <option value="critical">critical</option>
+          </select>
+          <select id="events-filter-agent" class="toolbar-select">
+            <option value="">All Agents</option>
+          </select>
+          <span class="panel-chip" id="events-page-chip">0 events</span>
+        </div>
+
+        <section class="panel">
+          <div class="table-wrap tall-table">
+            <table id="events-full-table"><thead><tr><th>Time</th><th>Agent</th><th>Type</th><th>Process</th><th>Subject</th><th>Destination</th><th>Severity</th><th>Action</th></tr></thead><tbody></tbody></table>
           </div>
         </section>
       </section>
@@ -138,13 +180,13 @@
       <!-- AGENTS PAGE -->
       <section class="page" id="page-agents">
         <section class="page-header">
-          <h2>Agent Management</h2>
-          <p>Register, monitor, and manage endpoint agents across your fleet.</p>
+          <h2>Agent Fleet</h2>
+          <p>Monitor and manage endpoint agents.</p>
         </section>
 
         <nav class="agents-tabs">
-          <button class="agents-tab active" data-agents-tab="fleet">Agent Fleet</button>
-          <button class="agents-tab" data-agents-tab="add">Add Agent</button>
+          <button class="agents-tab active" data-agents-tab="fleet">Fleet Overview</button>
+          <button class="agents-tab" data-agents-tab="add">Deploy Agent</button>
         </nav>
 
         <section class="agents-tab-panel active" id="agents-tab-fleet">
@@ -152,7 +194,7 @@
             <div class="panel-header"><div><p class="eyebrow">Fleet</p><h2>Registered Agents</h2></div><span class="panel-chip" id="agents-fleet-chip">0 agents</span></div>
             <div class="table-wrap fleet-table-wrap">
               <table id="agents-full-table">
-                <thead><tr><th>Hostname</th><th>IP</th><th>Kernel</th><th>Version</th><th>Status</th><th>First Seen</th><th>Last Seen</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Hostname</th><th>IP</th><th>Kernel</th><th>Version</th><th>Status</th><th>First Seen</th><th>Last Seen</th><th></th></tr></thead>
                 <tbody></tbody>
               </table>
             </div>
@@ -161,78 +203,23 @@
 
         <section class="agents-tab-panel" id="agents-tab-add">
           <section class="panel">
-            <div class="panel-header"><div><p class="eyebrow">Quick Install</p><h2>Add Agent</h2></div></div>
+            <div class="panel-header"><div><p class="eyebrow">Deploy</p><h2>Install Agent</h2></div></div>
             <div id="agent-install-wizard" class="agent-form">
-              <p style="color:var(--text-muted);font-size:0.84rem;margin:0 0 8px">Run this one-liner on any Linux endpoint. It auto-installs dependencies, compiles the eBPF agent, and registers it:</p>
-              <div class="code-block" id="agent-install-cmd"><code id="install-command">sudo kshield-agent --manager-url http://HOST:8080 --agent-token TOKEN</code></div>
+              <p class="form-hint">Run this on any Linux endpoint to auto-install the eBPF agent:</p>
+              <div class="code-block" id="agent-install-cmd"><code id="install-command">loading...</code></div>
               <div class="code-block-actions">
-                <button type="button" id="copy-install-btn" class="primary-button small">Copy Command</button>
+                <button type="button" id="copy-install-btn" class="primary-button small">Copy</button>
                 <span id="copy-feedback" style="display:none;color:var(--success);font-size:0.82rem">Copied!</span>
               </div>
               <hr class="form-divider" />
-              <p style="color:var(--text-muted);font-size:0.84rem;margin:0">Or manually register an agent that is already running:</p>
-              <label>Hostname <input id="reg-hostname" type="text" placeholder="e.g. prod-node-1" required /></label>
-              <label>IP Address <input id="reg-ip" type="text" placeholder="e.g. 192.168.122.27" required /></label>
-              <label>Kernel <input id="reg-kernel" type="text" placeholder="e.g. 6.8.0-110-generic" /></label>
-              <label>Version <input id="reg-version" type="text" placeholder="e.g. 0.1.0" /></label>
+              <p class="form-hint">Or manually register an existing agent:</p>
+              <label>Hostname <input id="reg-hostname" type="text" placeholder="prod-node-1" required /></label>
+              <label>IP Address <input id="reg-ip" type="text" placeholder="192.168.122.27" required /></label>
+              <label>Kernel <input id="reg-kernel" type="text" placeholder="6.8.0-110-generic" /></label>
+              <label>Version <input id="reg-version" type="text" placeholder="0.1.0" /></label>
               <button type="submit" class="primary-button" id="manual-register-btn">Register Agent</button>
               <p class="form-feedback" id="reg-feedback"></p>
             </div>
-          </section>
-        </section>
-      </section>
-
-      <!-- POLICY PAGE -->
-      <section class="page" id="page-policy">
-        <section class="page-header">
-          <h2>LSM Policy Control</h2>
-          <p>Configure inline eBPF-LSM enforcement rules. Changes sync to agents within seconds.</p>
-        </section>
-
-        <section class="policy-grid">
-          <section class="panel">
-            <div class="panel-header"><div><p class="eyebrow critical">Network</p><h2>Blocked IPv4</h2></div></div>
-            <form id="policy-form" class="policy-form">
-              <input id="ip-input" type="text" placeholder="IP address (e.g. 203.0.113.10)" required />
-              <input id="ip-agent-input" type="text" placeholder="Optional agent scope" />
-              <button type="submit" class="critical-button">Block IP</button>
-            </form>
-            <div id="policy-list" class="policy-list"></div>
-          </section>
-          <section class="panel">
-            <div class="panel-header"><div><p class="eyebrow critical">Network</p><h2>Blocked Bind Ports</h2></div></div>
-            <form id="bind-policy-form" class="policy-form">
-              <input id="bind-port-input" type="number" min="1" max="65535" placeholder="Port (e.g. 4444)" required />
-              <input id="bind-agent-input" type="text" placeholder="Optional agent scope" />
-              <button type="submit" class="critical-button">Block Port</button>
-            </form>
-            <div id="bind-policy-list" class="policy-list"></div>
-          </section>
-          <section class="panel">
-            <div class="panel-header"><div><p class="eyebrow critical">Execution</p><h2>Denied Exec Paths</h2></div></div>
-            <form id="exec-policy-form" class="policy-form">
-              <input id="exec-path-input" type="text" placeholder="Exact path (e.g. /usr/bin/nc)" required />
-              <input id="exec-agent-input" type="text" placeholder="Optional agent scope" />
-              <button type="submit" class="critical-button">Block Exec</button>
-            </form>
-            <div id="exec-policy-list" class="policy-list"></div>
-          </section>
-          <section class="panel">
-            <div class="panel-header"><div><p class="eyebrow critical">Filesystem</p><h2>Protected Write Targets</h2></div></div>
-            <form id="write-policy-form" class="policy-form">
-              <input id="write-target-input" type="text" placeholder="Basename (e.g. shadow)" required />
-              <input id="write-agent-input" type="text" placeholder="Optional agent scope" />
-              <button type="submit" class="critical-button">Protect Target</button>
-            </form>
-            <div id="write-policy-list" class="policy-list"></div>
-          </section>
-          <section class="panel">
-            <div class="panel-header"><div><p class="eyebrow critical">Process</p><h2>Ptrace Deny</h2></div></div>
-            <form id="ptrace-policy-form" class="policy-form">
-              <input id="ptrace-agent-input" type="text" placeholder="Optional agent scope" />
-              <button type="submit" class="critical-button">Enable Ptrace Deny</button>
-            </form>
-            <div id="ptrace-policy-list" class="policy-list"></div>
           </section>
         </section>
       </section>
@@ -241,25 +228,81 @@
       <section class="page" id="page-detectors">
         <section class="page-header">
           <h2>Detector Catalog</h2>
-          <p>TOML-based detection rules. Add files to <code>manager/detectors/</code> — auto-loaded, no restart.</p>
+          <p>TOML-based detection rules — auto-loaded from <code>manager/detectors/</code></p>
         </section>
+
+        <div class="filter-bar">
+          <select id="detectors-filter-severity" class="toolbar-select">
+            <option value="">All Severities</option>
+            <option value="info">info</option>
+            <option value="warning">warning</option>
+            <option value="critical">critical</option>
+          </select>
+          <select id="detectors-filter-tag" class="toolbar-select">
+            <option value="">All Tags</option>
+          </select>
+          <span class="panel-chip" id="catalog-chip-page">0 loaded</span>
+        </div>
+
         <section class="panel">
-          <div class="panel-header"><div><p class="eyebrow">Rules</p><h2>Loaded Detectors</h2></div><span class="panel-chip" id="catalog-chip-page">0 loaded</span></div>
           <div id="detector-list-page" class="detector-list tall-list"></div>
         </section>
       </section>
 
-      <!-- EVENTS PAGE -->
-      <section class="page" id="page-events">
+      <!-- POLICY PAGE -->
+      <section class="page" id="page-policy">
         <section class="page-header">
-          <h2>Security Event Stream</h2>
-          <p>Real-time kernel telemetry from all connected agents. <span class="live-dot"></span> Live</p>
+          <h2>LSM Policy Control</h2>
+          <p>eBPF-LSM enforcement rules. Changes sync to agents within seconds.</p>
         </section>
-        <section class="panel">
-          <div class="panel-header"><div><p class="eyebrow">Telemetry</p><h2>Raw Events</h2></div><span class="panel-chip" id="events-page-chip">0 events</span></div>
-          <div class="table-wrap tall-table">
-            <table id="events-full-table"><thead><tr><th>Timestamp</th><th>Agent</th><th>Type</th><th>Process</th><th>Subject</th><th>Dest</th><th>Severity</th><th>Action</th></tr></thead><tbody></tbody></table>
-          </div>
+
+        <div class="policy-summary" id="policy-summary"></div>
+
+        <section class="policy-grid">
+          <section class="panel">
+            <div class="panel-header"><div><p class="eyebrow critical">Network</p><h2>Blocked IPv4</h2></div><span class="panel-chip" id="policy-ipv4-count">0</span></div>
+            <form id="policy-form" class="policy-form">
+              <input id="ip-input" type="text" placeholder="IP (e.g. 203.0.113.10)" required />
+              <input id="ip-agent-input" type="text" placeholder="Agent scope (optional)" />
+              <button type="submit" class="critical-button">Block</button>
+            </form>
+            <div id="policy-list" class="policy-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-header"><div><p class="eyebrow critical">Network</p><h2>Blocked Bind Ports</h2></div><span class="panel-chip" id="policy-bind-count">0</span></div>
+            <form id="bind-policy-form" class="policy-form">
+              <input id="bind-port-input" type="number" min="1" max="65535" placeholder="Port (e.g. 4444)" required />
+              <input id="bind-agent-input" type="text" placeholder="Agent scope (optional)" />
+              <button type="submit" class="critical-button">Block</button>
+            </form>
+            <div id="bind-policy-list" class="policy-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-header"><div><p class="eyebrow critical">Execution</p><h2>Denied Exec Paths</h2></div><span class="panel-chip" id="policy-exec-count">0</span></div>
+            <form id="exec-policy-form" class="policy-form">
+              <input id="exec-path-input" type="text" placeholder="Path (e.g. /usr/bin/nc)" required />
+              <input id="exec-agent-input" type="text" placeholder="Agent scope (optional)" />
+              <button type="submit" class="critical-button">Block</button>
+            </form>
+            <div id="exec-policy-list" class="policy-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-header"><div><p class="eyebrow critical">Filesystem</p><h2>Protected Write Targets</h2></div><span class="panel-chip" id="policy-write-count">0</span></div>
+            <form id="write-policy-form" class="policy-form">
+              <input id="write-target-input" type="text" placeholder="Basename (e.g. shadow)" required />
+              <input id="write-agent-input" type="text" placeholder="Agent scope (optional)" />
+              <button type="submit" class="critical-button">Protect</button>
+            </form>
+            <div id="write-policy-list" class="policy-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-header"><div><p class="eyebrow critical">Process</p><h2>Ptrace Deny</h2></div><span class="panel-chip" id="policy-ptrace-count">0</span></div>
+            <form id="ptrace-policy-form" class="policy-form">
+              <input id="ptrace-agent-input" type="text" placeholder="Agent scope (optional)" />
+              <button type="submit" class="critical-button">Enable</button>
+            </form>
+            <div id="ptrace-policy-list" class="policy-list"></div>
+          </section>
         </section>
       </section>
 
@@ -267,30 +310,30 @@
       <section class="page" id="page-performance">
         <section class="page-header">
           <h2>Agent Performance</h2>
-          <p>Live CPU and memory metrics for each endpoint agent. Updated every 10s.</p>
+          <p>Live CPU and memory metrics per agent. Updated every 10s.</p>
         </section>
-
-        <section id="perf-agent-cards" class="perf-agent-grid">
-          <!-- agent cards injected here -->
-        </section>
+        <section id="perf-agent-cards" class="perf-agent-grid"></section>
       </section>
 
       <!-- BENCHMARKS PAGE -->
       <section class="page" id="page-benchmarks">
         <section class="page-header">
           <h2>Detection Benchmarks</h2>
-          <p>System-wide efficiency baselines: latency, throughput, accuracy, and resource usage. Updated on page load.</p>
+          <p>System-wide latency, throughput, accuracy, and resource baselines.</p>
         </section>
-
         <section id="benchmark-content"></section>
       </section>
     </main>
   </div>
 
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Drawer -->
   <aside id="detection-backdrop" class="drawer-backdrop hidden"></aside>
   <aside id="detection-drawer" class="detail-drawer hidden" aria-hidden="true">
     <div class="drawer-header">
-      <div><p class="eyebrow">Detection Detail</p><h2 id="drawer-title">No detection selected</h2></div>
+      <div><p class="eyebrow">Detection Detail</p><h2 id="drawer-title">—</h2></div>
       <button id="drawer-close" class="drawer-close" type="button" aria-label="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m18 6-12 12"/><path d="m6 6 12 12"/></svg>
       </button>
