@@ -1,9 +1,11 @@
 id = "mount-activity"
 name = "Mount Activity"
-description = "Flags mount syscall activity for manual review."
+description = "Flags mount syscall activity from non-system processes."
 severity = "warning"
 tags = ["filesystem", "persistence"]
 summary_template = "{comm} attempted mount on {subject}"
 
 [match]
 event_types = ["mount"]
+comm_not_in = ["fprintd", "imesyncd", "imedated", "emd-oomd", "find", "mandb", "ogrotate", "fstrim", "fwupdmgr", "fwupd", "systemd", "systemd-oomd", "systemd-timesyn", "systemd-logind"]
+subject_not_contains = ["/proc/self/fd"]

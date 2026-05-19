@@ -1,10 +1,11 @@
 id = "interactive-shell-exec"
 name = "Interactive Shell Execution"
-description = "Flags execution of common interactive shells."
+description = "Flags execution of interactive shells from non-system processes."
 severity = "info"
 tags = ["execution", "shell"]
 summary_template = "{comm} executed {subject}"
 
 [match]
 event_types = ["execve"]
-comm_in = ["bash", "sh", "dash", "zsh", "fish"]
+subject_contains = ["/bin/bash", "/bin/sh", "/bin/dash", "/bin/zsh", "/bin/fish"]
+comm_not_in = ["python3", "python", "cron", "systemd", "sshd", "gdm-session-wor", "dpkg", "apt", "unattended-upgr"]

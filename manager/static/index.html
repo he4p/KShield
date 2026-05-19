@@ -31,6 +31,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h4l2-6 4 12 2-6h4"/></svg>
           Events
         </button></li>
+        <li><button class="nav-btn" data-page="detections">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><circle cx="12" cy="17" r=".5"/></svg>
+          Detections
+        </button></li>
         <li><button class="nav-btn" data-page="agents">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/></svg>
           Agents
@@ -173,6 +177,41 @@
         <section class="panel">
           <div class="table-wrap tall-table">
             <table id="events-full-table"><thead><tr><th>Time</th><th>Agent</th><th>Type</th><th>Process</th><th>Subject</th><th>Destination</th><th>Severity</th><th>Action</th></tr></thead><tbody></tbody></table>
+          </div>
+        </section>
+      </section>
+
+      <!-- DETECTIONS PAGE -->
+      <section class="page" id="page-detections">
+        <section class="page-header">
+          <h2>Detections</h2>
+          <p>Detector firings — correlated alerts from TOML-based rules. Separate from raw telemetry.</p>
+        </section>
+
+        <div class="filter-bar">
+          <select id="detections-page-severity" class="toolbar-select">
+            <option value="">All Severities</option>
+            <option value="info">info</option>
+            <option value="warning">warning</option>
+            <option value="critical">critical</option>
+          </select>
+          <select id="detections-page-detector" class="toolbar-select">
+            <option value="">All Detectors</option>
+          </select>
+          <select id="detections-page-agent" class="toolbar-select">
+            <option value="">All Agents</option>
+          </select>
+          <span class="panel-chip" id="detections-page-chip">0 detections</span>
+        </div>
+
+        <section class="panel">
+          <div class="table-wrap tall-table">
+            <table id="detections-full-table"><thead><tr><th>Time</th><th>Detector</th><th>Severity</th><th>Agent</th><th>Type</th><th>Summary</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="detections-page-pagination">
+            <button id="detections-page-prev" class="action-btn" disabled>← Prev</button>
+            <span id="detections-page-info">0–0 of 0</span>
+            <button id="detections-page-next" class="action-btn" disabled>Next →</button>
           </div>
         </section>
       </section>

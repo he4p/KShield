@@ -1,9 +1,10 @@
 id = "bpf-syscall-use"
 name = "BPF Syscall Use"
-description = "Flags direct bpf syscall use from userspace."
+description = "Flags direct bpf syscall use from unexpected userspace processes."
 severity = "warning"
 tags = ["bpf", "kernel", "tampering"]
 summary_template = "{comm} issued bpf syscall cmd {arg0}"
 
 [match]
 event_types = ["bpf"]
+comm_not_in = ["kshield-agent", "systemd", "snap-device-hel"]

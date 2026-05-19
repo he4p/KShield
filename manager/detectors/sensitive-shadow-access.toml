@@ -1,6 +1,6 @@
 id = "sensitive-shadow-access"
 name = "Sensitive Shadow Access"
-description = "Flags access attempts against /etc/shadow."
+description = "Flags access to /etc/shadow from non-system processes."
 severity = "critical"
 tags = ["credential-access", "filesystem"]
 summary_template = "{comm} accessed {subject}"
@@ -8,3 +8,4 @@ summary_template = "{comm} accessed {subject}"
 [match]
 event_types = ["file_open"]
 subject_prefixes = ["/etc/shadow"]
+comm_not_in = ["sshd", "dpkg-preconfigu", "cron", "gdm-session-wor", "adduser", "chpasswd", "useradd", "usermod", "passwd", "login", "su", "sudo", "perl", "frontend"]

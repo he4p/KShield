@@ -91,6 +91,8 @@ class Detector:
     uids: list[int] = field(default_factory=list)
     arg0_in: list[int] = field(default_factory=list)
     arg1_in: list[int] = field(default_factory=list)
+    comm_not_in: list[str] = field(default_factory=list)
+    subject_not_contains: list[str] = field(default_factory=list)
     threshold_count: int = 1
     threshold_window_secs: int = 0
     group_by: list[str] = field(default_factory=list)
@@ -121,6 +123,8 @@ class Detector:
             uids=[as_int(v) for v in as_list(match.get("uids"))],
             arg0_in=[as_int(v) for v in as_list(match.get("arg0_in"))],
             arg1_in=[as_int(v) for v in as_list(match.get("arg1_in"))],
+            comm_not_in=[as_str(v).strip().lower() for v in as_list(match.get("comm_not_in")) if as_str(v).strip()],
+            subject_not_contains=[as_str(v).strip().lower() for v in as_list(match.get("subject_not_contains")) if as_str(v).strip()],
             threshold_count=max(1, as_int(payload.get("threshold_count"), 1)),
             threshold_window_secs=max(0, as_int(payload.get("threshold_window_secs"), 0)),
             group_by=[as_str(v).strip() for v in as_list(payload.get("group_by")) if as_str(v).strip()],
@@ -160,6 +164,10 @@ class Detector:
         if self.arg0_in and arg0 not in self.arg0_in:
             return False
         if self.arg1_in and arg1 not in self.arg1_in:
+            return False
+        if self.comm_not_in and comm in self.comm_not_in:
+            return False
+        if self.subject_not_contains and any(fragment in subject for fragment in self.subject_not_contains):
             return False
         return True
 

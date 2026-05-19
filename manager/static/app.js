@@ -27,6 +27,12 @@ const state = {
   eventsFilterAgent: "",
   detectorsFilterSeverity: "",
   detectorsFilterTag: "",
+  // Detections page filters
+  detectionsPageSeverity: "",
+  detectionsPageDetector: "",
+  detectionsPageAgent: "",
+  detectionsPageOffset: 0,
+  detectionsPageSize: 50,
 };
 
 /* ---- util ---- */
@@ -205,6 +211,60 @@ function renderDetections() {
 }
 
 /* ---- render: policy ---- */
+/* ---- render: detections page (dedicated) ---- */
+function renderDetectionsPage() {
+  const { detectionsPageSeverity: fs, detectionsPageDetector: fd, detectionsPageAgent: fa } = state;
+  let items = state.detections;
+  if (fs) items = items.filter(d => d.severity === fs);
+  if (fd) items = items.filter(d => d.detector_id === fd);
+  if (fa) items = items.filter(d => d.agent_id === fa);
+  const term = state.search.trim().toLowerCase();
+  if (term) items = items.filter(d => matchesTerm([d.detector_name, d.severity, d.summary, d.event_type, agentName(d.agent_id)], term));
+
+  const total = items.length;
+  const offset = state.detectionsPageOffset;
+  const pageItems = items.slice(offset, offset + state.detectionsPageSize);
+
+  const tbody = document.querySelector("#detections-full-table tbody");
+  tbody.innerHTML = "";
+  setText("detections-page-chip", `${formatNumber(total)} detections`);
+  if (!pageItems.length) { tbody.appendChild(emptyRow(6, "No detections match", "Adjust filters or trigger activity.")); }
+  for (const h of pageItems) {
+    const tr = document.createElement("tr");
+    tr.dataset.detectionId = String(h.id);
+    tr.innerHTML = `<td class="subtle">${formatTs(h.ts)}</td><td><strong>${esc(h.detector_name)}</strong></td><td><span class="pill ${sevClass(h.severity)}">${esc(h.severity)}</span></td><td>${esc(agentName(h.agent_id))}</td><td><span class="mono">${esc(h.event_type)}</span></td><td>${esc(h.summary)}</td>`;
+    tbody.appendChild(tr);
+  }
+  const start = total ? offset + 1 : 0;
+  const end = Math.min(offset + state.detectionsPageSize, total);
+  setText("detections-page-info", `${formatNumber(start)}–${formatNumber(end)} of ${formatNumber(total)}`);
+  document.getElementById("detections-page-prev").disabled = offset <= 0;
+  document.getElementById("detections-page-next").disabled = offset + state.detectionsPageSize >= total;
+
+  // Populate detector filter dropdown
+  const detSel = document.getElementById("detections-page-detector");
+  const allDets = [...new Set(state.detections.map(d => d.detector_id))].sort();
+  const curDet = detSel.value;
+  detSel.innerHTML = `<option value="">All Detectors</option>` + allDets.map(id => { const name = state.detections.find(d => d.detector_id === id)?.detector_name || id; return `<option value="${esc(id)}"${id===curDet?" selected":""}>${esc(name)}</option>`; }).join("");
+  // Populate agent filter
+  const agSel = document.getElementById("detections-page-agent");
+  if (state.agents.length) {
+    const cur = agSel.value;
+    agSel.innerHTML = `<option value="">All Agents</option>` + state.agents.map(a => `<option value="${esc(a.id)}"${a.id===cur?" selected":""}>${esc(a.hostname)}</option>`).join("");
+  }
+}
+
+function renderPolicySummary() {
+  const el = document.getElementById("policy-summary");
+  const ipv4Active = state.blockedIpv4.filter(r => r.enabled).length;
+  const bindActive = state.blockedBindPorts.filter(r => r.enabled).length;
+  const execActive = state.blockedExecPaths.filter(r => r.enabled).length;
+  const writeActive = state.protectedWriteTargets.filter(r => r.enabled).length;
+  const ptraceActive = state.ptraceDenies.filter(r => r.enabled).length;
+  const total = ipv4Active + bindActive + execActive + writeActive + ptraceActive;
+  el.innerHTML = `<span class="panel-chip">${total} active rules</span><span class="panel-chip">${ipv4Active} IPs</span><span class="panel-chip">${bindActive} ports</span><span class="panel-chip">${execActive} exec</span><span class="panel-chip">${writeActive} write</span><span class="panel-chip">${ptraceActive} ptrace</span>`;
+}
+
 function policyCard(strong, detail, entry, scope, attrs) {
   const card = document.createElement("div");
   card.className = `policy-item${entry.enabled ? "" : " is-disabled"}`;
@@ -389,9 +449,10 @@ function applyState() {
   const p = state.page;
   if (p === "dashboard") { renderSeverity(state.detections.length ? state.detections : state.events); renderTopDetectors(); renderDetections(); }
   else if (p === "events") renderEventsPage();
+  else if (p === "detections") renderDetectionsPage();
   else if (p === "agents") renderAgentsPage();
   else if (p === "detectors") renderDetectorsPage();
-  else if (p === "policy") { renderIpv4Policy(state.blockedIpv4); renderBindPolicy(state.blockedBindPorts); renderExecPolicy(state.blockedExecPaths); renderWritePolicy(state.protectedWriteTargets); renderPtracePolicy(state.ptraceDenies); }
+  else if (p === "policy") { renderPolicySummary(); renderIpv4Policy(state.blockedIpv4); renderBindPolicy(state.blockedBindPorts); renderExecPolicy(state.blockedExecPaths); renderWritePolicy(state.protectedWriteTargets); renderPtracePolicy(state.ptraceDenies); }
   else if (p === "performance") renderPerformancePage();
   else if (p === "benchmarks") renderBenchmarksPage();
   // Update agent filter dropdown
@@ -424,11 +485,12 @@ async function refresh() {
     const hp = hours ? `&hours=${hours}` : "";
     const limit = hours ? "5000" : "200";
     const df = state.detectionsSeverity ? `&severity=${state.detectionsSeverity}` : "";
+    const detLimit = page === "detections" ? 500 : state.detectionsPageSize;
     const [summary, agents, events, detsRes, detectors, policy, tokenRes, metricsRes] = await Promise.all([
       fetchJson("/api/v1/metrics/summary"),
       fetchJson("/api/v1/agents"),
       fetchJson(`/api/v1/events?limit=${limit}${hp}`),
-      fetchJson(`/api/v1/detections?limit=${state.detectionsPageSize}&offset=${state.detectionsOffset}${hp}${df}`),
+      fetchJson(`/api/v1/detections?limit=${detLimit}&offset=${page === "detections" ? 0 : state.detectionsOffset}${hp}${df}`),
       fetchJson("/api/v1/detectors"),
       fetchJson("/api/v1/policy"),
       fetchJson("/api/v1/agent-token").catch(() => ({ agent_token: "" })),
@@ -498,7 +560,17 @@ document.getElementById("events-filter-agent").addEventListener("change", e => {
 document.getElementById("detectors-filter-severity").addEventListener("change", e => { state.detectorsFilterSeverity = e.target.value; applyState(); });
 document.getElementById("detectors-filter-tag").addEventListener("change", e => { state.detectorsFilterTag = e.target.value; applyState(); });
 
-// Detections severity + pagination
+// Detections page filters + pagination
+document.getElementById("detections-page-severity").addEventListener("change", e => { state.detectionsPageSeverity = e.target.value; state.detectionsPageOffset = 0; applyState(); });
+document.getElementById("detections-page-detector").addEventListener("change", e => { state.detectionsPageDetector = e.target.value; state.detectionsPageOffset = 0; applyState(); });
+document.getElementById("detections-page-agent").addEventListener("change", e => { state.detectionsPageAgent = e.target.value; state.detectionsPageOffset = 0; applyState(); });
+document.getElementById("detections-page-prev").addEventListener("click", () => { state.detectionsPageOffset = Math.max(0, state.detectionsPageOffset - state.detectionsPageSize); applyState(); });
+document.getElementById("detections-page-next").addEventListener("click", () => { if (state.detectionsPageOffset + state.detectionsPageSize < state.detections.length) { state.detectionsPageOffset += state.detectionsPageSize; applyState(); } });
+
+// Detections page drawer click
+document.querySelector("#detections-full-table tbody").addEventListener("click", e => { const row = e.target.closest("tr[data-detection-id]"); if (row) openDetectionDrawer(row.dataset.detectionId); });
+
+// Dashboard detections severity + pagination
 document.getElementById("detections-severity-filter").addEventListener("change", e => { state.detectionsSeverity = e.target.value; state.detectionsOffset = 0; refresh(); });
 document.getElementById("detections-prev").addEventListener("click", () => { state.detectionsOffset = Math.max(0, state.detectionsOffset - state.detectionsPageSize); refresh(); });
 document.getElementById("detections-next").addEventListener("click", () => { if (state.detectionsOffset + state.detectionsPageSize < state.detectionsTotal) { state.detectionsOffset += state.detectionsPageSize; refresh(); } });
