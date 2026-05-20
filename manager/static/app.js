@@ -617,7 +617,6 @@ document.getElementById("severity-filter").addEventListener("change", (event) =>
   state.severityFilter = event.target.value;
   applyState();
 });
-});
 
 // Agents tabs
 document.querySelector(".agents-tabs").addEventListener("click", e => {
