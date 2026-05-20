@@ -1,0 +1,18 @@
+id = "indicator-blocking"
+name = "Indicator Blocking"
+description = "Flags access to hosts, DNS, and logging configuration that can block security telemetry or indicators."
+severity = "warning"
+tags = ["defense-evasion", "impair-defenses", "indicator-blocking", "t1562.006"]
+summary_template = "{comm} touched indicator blocking surface {subject}"
+
+[match]
+event_types = ["file_open", "file_write"]
+subject_prefixes = [
+  "/etc/hosts",
+  "/etc/resolv.conf",
+  "/etc/systemd/resolved.conf",
+  "/etc/dnsmasq.conf",
+  "/etc/rsyslog.conf",
+  "/etc/rsyslog.d",
+  "/etc/syslog-ng"
+]

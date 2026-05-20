@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ataree - Kernel Security Platform</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
+
+    :root {
+      --bg: #060c18;
+      --bg2: #0a1220;
+      --panel: rgba(12, 22, 40, 0.75);
+      --panel2: rgba(18, 32, 58, 0.70);
+      --text: #e8f0fe;
+      --muted: #7b93bc;
+      --line: rgba(120, 170, 255, 0.14);
+      --accent: #00d4ff;
+      --green: #00ff88;
+      --red: #ff4d6d;
+      --orange: #ffaa44;
+      --purple: #a78bfa;
+      --radius: 20px;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 15% 20%, rgba(0, 212, 255, 0.10) 0%, transparent 40%),
+        radial-gradient(ellipse at 80% 10%, rgba(167, 139, 250, 0.10) 0%, transparent 35%),
+        radial-gradient(ellipse at 50% 90%, rgba(0, 255, 136, 0.06) 0%, transparent 30%),
+        linear-gradient(160deg, #060c18 0%, #0a1220 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, .018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .018) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse at center, black 30%, transparent 85%);
+    }
+
+    .deck {
+      position: relative;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+
+    .slides {
+      display: flex;
+      height: 100%;
+      transition: transform 750ms cubic-bezier(.22, .96, .22, 1);
+    }
+
+    .slide {
+      min-width: 100vw;
+      width: 100vw;
+      height: 100vh;
+      padding: 52px 72px 80px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    .slide-counter {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .1em;
+    }
+
+    h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(26px, 3.2vw, 44px);
+      font-weight: 700;
+      line-height: 1.02;
+      letter-spacing: -.03em;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: clamp(16px, 1.6vw, 21px);
+      line-height: 1.55;
+      max-width: 60ch;
+    }
+
+    .accent {
+      color: var(--accent);
+    }
+
+    .green {
+      color: var(--green);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .panel {
+      background: linear-gradient(160deg, rgba(255, 255, 255, .042), rgba(255, 255, 255, .018));
+      border: 1px solid var(--line);
+      backdrop-filter: blur(20px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 4px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--line);
+    }
+
+    /* ── NAV ── */
+    .nav {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(10, 18, 32, .82);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(24px);
+      border-radius: 999px;
+      padding: 10px 18px;
+      z-index: 100;
+    }
+
+    .nav button {
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(255, 255, 255, .04);
+      color: var(--text);
+      padding: 9px 20px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: .22s ease;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .nav button:hover {
+      background: rgba(0, 212, 255, .12);
+      border-color: rgba(0, 212, 255, .3);
+    }
+
+    .nav button:disabled {
+      opacity: .3;
+      cursor: default;
+    }
+
+    .nav-dots {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      padding: 0 6px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      cursor: pointer;
+      transition: .22s ease;
+    }
+
+    .dot.active {
+      background: var(--accent);
+      transform: scale(1.5);
+    }
+
+    /* ════ SLIDE 1 - TITLE ════ */
+    .title-layout {
+      display: grid;
+      align-content: center;
+      gap: 22px;
+      height: 100%;
+    }
+
+    .ataree-wordmark {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(72px, 10vw, 130px);
+      font-weight: 800;
+      letter-spacing: -.06em;
+      line-height: .88;
+      background: linear-gradient(135deg, #fff 30%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .title-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .tag {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .04);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .tag.accent-tag {
+      border-color: rgba(0, 212, 255, .28);
+      color: var(--accent);
+      background: rgba(0, 212, 255, .07);
+    }
+
+    .title-team-line {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .title-team-line span {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .prompt-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(13px, 1.1vw, 16px);
+      color: var(--green);
+      padding: 18px 22px;
+      border-radius: 14px;
+      background: rgba(0, 255, 136, .04);
+      border: 1px solid rgba(0, 255, 136, .15);
+      display: inline-block;
+      width: fit-content;
+    }
+
+    /* ════ SLIDE 2 - AGENDA ════ */
+    .agenda-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: repeat(3, auto);
+      gap: 14px;
+      align-content: center;
+      height: 100%;
+    }
+
+    .agenda-item {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 20px;
+      align-items: center;
+      padding: 22px 26px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, .025);
+      border: 1px solid var(--line);
+      transition: .2s ease;
+      cursor: default;
+    }
+
+    .agenda-item:hover {
+      border-color: rgba(0, 212, 255, .22);
+      background: rgba(0, 212, 255, .04);
+      transform: translateX(4px);
+    }
+
+    .agenda-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+      opacity: .55;
+      text-align: center;
+    }
+
+    .agenda-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .agenda-sub {
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* ════ SLIDE 3 - THREAT ════ */
+    .threat-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .cve-list {
+      padding: 26px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .context-panel {
+      padding: 26px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .cve-item {
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .025);
+      display: grid;
+      gap: 4px;
+      transition: .2s ease;
+    }
+
+    .cve-item:hover {
+      border-color: rgba(255, 77, 109, .22);
+      background: rgba(255, 77, 109, .03);
+    }
+
+    .cve-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .cve-name {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .cve-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-top: 3px;
+    }
+
+    .context-item {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 5px;
+    }
+
+    .context-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .context-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .context-body {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ════ SLIDE 4 - KERNEL ════ */
+    .kernel-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    .kernel-left {
+      padding: 28px 30px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .kernel-right {
+      padding: 28px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .ring-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .ring {
+      padding: 16px 22px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 500;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: .25s ease;
+      cursor: default;
+    }
+
+    .ring:hover {
+      transform: translateX(4px);
+    }
+
+    .ring-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      opacity: .6;
+    }
+
+    .ring-0 {
+      background: rgba(0, 212, 255, .12);
+      border: 1px solid rgba(0, 212, 255, .25);
+    }
+
+    .ring-1 {
+      background: rgba(167, 139, 250, .09);
+      border: 1px solid rgba(167, 139, 250, .2);
+    }
+
+    .ring-2 {
+      background: rgba(255, 170, 68, .07);
+      border: 1px solid rgba(255, 170, 68, .15);
+    }
+
+    .ring-3 {
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid rgba(255, 255, 255, .08);
+    }
+
+    .why-item {
+      padding: 16px 20px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .025);
+      border: 1px solid var(--line);
+      font-size: 15px;
+      line-height: 1.5;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .why-icon {
+      font-size: 20px;
+    }
+
+    /* ════ SLIDE 5 - eBPF ════ */
+    .ebpf-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    .ebpf-left {
+      padding: 28px;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .ebpf-right {
+      padding: 28px;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .flow-steps {
+      display: grid;
+      gap: 10px;
+    }
+
+    .flow-step {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 14px 18px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .025);
+      border: 1px solid var(--line);
+      transition: .2s ease;
+    }
+
+    .flow-step:hover {
+      border-color: rgba(0, 212, 255, .25);
+    }
+
+    .step-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(0, 212, 255, .25), rgba(0, 212, 255, .08));
+      border: 1px solid rgba(0, 212, 255, .3);
+      display: grid;
+      place-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .hook-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .hook-card {
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, .025);
+      border: 1px solid var(--line);
+      display: grid;
+      gap: 6px;
+      transition: .2s ease;
+    }
+
+    .hook-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(0, 255, 136, .2);
+    }
+
+    .hook-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .hook-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* ════ SLIDE 6 - SOLUTION ════ */
+    .solution-layout {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 22px;
+    }
+
+    .arch-panel {
+      padding: 28px;
+      display: grid;
+      gap: 20px;
+      align-content: start;
+    }
+
+    .arch-diagram {
+      display: grid;
+      gap: 12px;
+    }
+
+    .arch-layer {
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .arch-layer::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+    }
+
+    .layer-manager {
+      background: rgba(0, 212, 255, .08);
+      border: 1px solid rgba(0, 212, 255, .2);
+    }
+
+    .layer-manager::before {
+      background: var(--accent);
+    }
+
+    .layer-agent {
+      background: rgba(0, 255, 136, .06);
+      border: 1px solid rgba(0, 255, 136, .18);
+    }
+
+    .layer-agent::before {
+      background: var(--green);
+    }
+
+    .layer-kernel {
+      background: rgba(167, 139, 250, .07);
+      border: 1px solid rgba(167, 139, 250, .18);
+    }
+
+    .layer-kernel::before {
+      background: var(--purple);
+    }
+
+    .layer-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .layer-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .layer-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(255, 255, 255, .1);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .feature-panel {
+      padding: 24px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .feature-item {
+      padding: 14px 18px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .025);
+      border: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 12px;
+      align-items: start;
+      transition: .2s ease;
+    }
+
+    .feature-item:hover {
+      border-color: rgba(0, 212, 255, .2);
+      transform: translateX(2px);
+    }
+
+    .feature-icon {
+      font-size: 20px;
+    }
+
+    .feature-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+
+    .feature-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    /* ════ SLIDE 7 - WHAT WE BUILT ════ */
+    .conclusion-layout {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 24px;
+    }
+
+    .conclusion-left {
+      padding: 28px 32px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .conclusion-right {
+      padding: 28px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .takeaway-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .takeaway {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 16px 18px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .025);
+      border: 1px solid var(--line);
+      transition: .2s ease;
+    }
+
+    .takeaway:hover {
+      border-color: rgba(0, 212, 255, .2);
+    }
+
+    .takeaway-check {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .takeaway-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+
+    .takeaway-body {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .future-item {
+      padding: 13px 16px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .025);
+      border: 1px solid var(--line);
+      font-size: 15px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      transition: .2s ease;
+    }
+
+    .future-item:hover {
+      border-color: rgba(167, 139, 250, .25);
+      transform: translateX(2px);
+    }
+
+    /* ════ SLIDE 8 - DEMO ════ */
+    .demo-simple-layout {
+      display: grid;
+      place-items: center;
+      height: 100%;
+    }
+
+    .demo-center {
+      display: grid;
+      gap: 28px;
+      place-items: center;
+      text-align: center;
+      max-width: 520px;
+    }
+
+    .demo-icon-ring {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 212, 255, .2);
+      background: rgba(0, 212, 255, .05);
+      display: grid;
+      place-items: center;
+      font-size: 46px;
+      animation: pulse-ring 3s infinite ease-in-out;
+    }
+
+    @keyframes pulse-ring {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(0, 212, 255, .15);
+      }
+
+      50% {
+        box-shadow: 0 0 0 22px rgba(0, 212, 255, .0);
+      }
+    }
+
+    .glow-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+      box-shadow: 0 0 8px var(--green);
+      animation: blink 1.6s infinite;
+      display: inline-block;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .4
+      }
+    }
+
+    /* ════ SLIDE 9 - Q&A ════ */
+    .qa-layout {
+      display: grid;
+      place-items: center;
+      height: 100%;
+    }
+
+    .qa-center {
+      display: grid;
+      gap: 30px;
+      place-items: center;
+      text-align: center;
+      max-width: 620px;
+    }
+
+    .qa-wordmark {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(48px, 7vw, 88px);
+      font-weight: 800;
+      letter-spacing: -.04em;
+      color: var(--text);
+    }
+
+    .qa-divider {
+      width: 80px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .qa-points {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .qa-point {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.5;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .qa-point::before {
+      content: "—";
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .qa-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--accent);
+      padding: 12px 28px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 212, 255, .25);
+      background: rgba(0, 212, 255, .06);
+      letter-spacing: .1em;
+    }
+
+    /* ════ SLIDE 8 - EXTENSIBILITY ════ */
+    .ext-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    .ext-left {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .ext-right {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .ext-card {
+      padding: 20px 24px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, .025);
+      border: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 16px;
+      align-items: start;
+      transition: .22s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ext-card::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+    }
+
+    .ext-card.c-accent::before { background: var(--accent); }
+    .ext-card.c-green::before  { background: var(--green); }
+    .ext-card.c-purple::before { background: var(--purple); }
+    .ext-card.c-orange::before { background: var(--orange); }
+
+    .ext-card.c-accent:hover { border-color: rgba(0,212,255,.28); background: rgba(0,212,255,.04); }
+    .ext-card.c-green:hover  { border-color: rgba(0,255,136,.25); background: rgba(0,255,136,.03); }
+    .ext-card.c-purple:hover { border-color: rgba(167,139,250,.25); background: rgba(167,139,250,.03); }
+    .ext-card.c-orange:hover { border-color: rgba(255,170,68,.22); background: rgba(255,170,68,.03); }
+
+    .ext-card:hover { transform: translateX(4px); }
+
+    .ext-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .ext-icon.c-accent { background: rgba(0,212,255,.1); border: 1px solid rgba(0,212,255,.2); }
+    .ext-icon.c-green  { background: rgba(0,255,136,.08); border: 1px solid rgba(0,255,136,.18); }
+    .ext-icon.c-purple { background: rgba(167,139,250,.09); border: 1px solid rgba(167,139,250,.2); }
+    .ext-icon.c-orange { background: rgba(255,170,68,.08); border: 1px solid rgba(255,170,68,.18); }
+
+    .ext-card-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .ext-card-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .load-panel {
+      padding: 22px 26px;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .perf-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .perf-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .perf-label {
+      color: var(--muted);
+    }
+
+    .perf-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .perf-bar-track {
+      height: 6px;
+      border-radius: 99px;
+      background: rgba(255,255,255,.06);
+      overflow: hidden;
+    }
+
+    .perf-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat-box {
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.025);
+      border: 1px solid var(--line);
+      text-align: center;
+    }
+
+    .stat-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+    }
+
+    .stat-unit {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ════ SLIDE 8 - EXTENSIBILITY ════ */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, .1);
+      border-radius: 99px;
+    }
+
+    .key-hint {
+      position: fixed;
+      bottom: 28px;
+      right: 32px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    kbd {
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, .12);
+      background: rgba(255, 255, 255, .05);
+      font: inherit;
+    }
+
+    .s1-glow {
+      position: absolute;
+      pointer-events: none;
+      width: 600px;
+      height: 600px;
+      right: -100px;
+      top: -150px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 212, 255, .07), transparent 65%);
+    }
+
+    .s5-glow {
+      position: absolute;
+      pointer-events: none;
+      width: 400px;
+      height: 400px;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 255, 136, .06), transparent 65%);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="deck">
+    <div class="slides" id="slides">
+
+      <!-- ══════════════════════════════════════
+         SLIDE 1 - TITLE
+    ═══════════════════════════════════════ -->
+      <div class="slide">
+        <div class="s1-glow"></div>
+        <div class="topbar">
+          <span class="eyebrow">Cyber Security - Higher School of Computer Science, Sidi Bel-Abbes 08-05-1945 · 2025–2026</span>
+          <span class="slide-counter">01 / 10</span>
+        </div>
+
+        <div class="title-layout">
+          <div class="title-tags">
+            <span class="tag accent-tag">eBPF</span>
+            <span class="tag accent-tag">LSM</span>
+            <span class="tag">Linux Kernel Security</span>
+            <span class="tag">Intrusion Prevention</span>
+          </div>
+
+          <div class="ataree-wordmark">ATAREE</div>
+
+          <div class="sub">Kernel-level Linux threat detection &amp; prevention using eBPF and Linux Security Modules.
+          </div>
+
+          <div class="prompt-line">$ sudo ataree --protect-all &nbsp;<span
+              style="animation:blink 1s infinite;display:inline-block">▌</span></div>
+
+          <div>
+            <div class="title-team-line">
+              <span>Mokhtari Anas</span> &nbsp;·&nbsp; <span>Madene Meriem</span> &nbsp;·&nbsp; <span>Daamache
+                Achouak</span> &nbsp;·&nbsp; <span>Djenadi Mohamed Amine</span> &nbsp;·&nbsp; <span>Benmeriouma
+                Chamseddine</span>
+            </div>
+            <div class="title-team-line" style="margin-top:4px">Supervisor &nbsp;·&nbsp; <span>Baba Ahmed Manel</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+         SLIDE 2 - AGENDA
+    ═══════════════════════════════════════ -->
+      <div class="slide">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">Overview</div>
+            <h2 style="margin-top:6px">Agenda</h2>
+          </div>
+          <span class="slide-counter">02 / 10</span>
+        </div>
+
+        <div class="agenda-layout">
+          <div class="agenda-item">
+            <div class="agenda-num">01</div>
+            <div>
+              <div class="agenda-title">Introduction &amp; Motivation</div>
+              <div class="agenda-sub">Recent Linux kernel vulnerabilities and why they matter</div>
+            </div>
+          </div>
+          <div class="agenda-item">
+            <div class="agenda-num">02</div>
+            <div>
+              <div class="agenda-title">What is Kernel Security?</div>
+              <div class="agenda-sub">Privilege rings, attack surface, and why user-space tools fall short</div>
+            </div>
+          </div>
+          <div class="agenda-item">
+            <div class="agenda-num">03</div>
+            <div>
+              <div class="agenda-title">What is eBPF?</div>
+              <div class="agenda-sub">The technology that makes kernel-level security programmable</div>
+            </div>
+          </div>
+          <div class="agenda-item">
+            <div class="agenda-num">04</div>
+            <div>
+              <div class="agenda-title">Ataree - Our Solution</div>
+              <div class="agenda-sub">Architecture, capabilities, and how it all fits together</div>
+            </div>
+          </div>
+          <div class="agenda-item">
+            <div class="agenda-num">05</div>
+            <div>
+              <div class="agenda-title">Demo</div>
+              <div class="agenda-sub">Live demonstration of Ataree in action</div>
+            </div>
+          </div>
+          <div class="agenda-item">
+            <div class="agenda-num">06</div>
+            <div>
+              <div class="agenda-title">Extensibility &amp; Integration</div>
+              <div class="agenda-sub">Plugin architecture, auto integration, load profile &amp; scalability</div>
+            </div>
+          </div>
+          <div class="agenda-item">
+            <div class="agenda-num">07</div>
+            <div>
+              <div class="agenda-title">Conclusion &amp; Q&amp;A</div>
+              <div class="agenda-sub">Key takeaways and open discussion</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+         SLIDE 3 - THREAT LANDSCAPE
+    ═══════════════════════════════════════ -->
+      <div class="slide">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">01 - Introduction</div>
+            <h2 style="margin-top:6px">The Linux Security Crisis</h2>
+          </div>
+          <span class="slide-counter">03 / 10</span>
+        </div>
+
+        <div class="threat-layout">
+          <div class="cve-list panel">
+            <div class="panel-label">Recent High-Impact CVEs</div>
+
+            <div class="cve-item">
+              <div class="cve-id">CVE-2026-31431 - "Copy Fail" &nbsp;·&nbsp; May 2026</div>
+              <div class="cve-name">Universal local privilege escalation</div>
+              <div class="cve-desc">Logic flaw in the kernel crypto API. A 732-byte Python script roots Ubuntu, RHEL,
+                and Amazon Linux - every major distro since 2017.</div>
+            </div>
+
+            <div class="cve-item">
+              <div class="cve-id">CVE-2026-46333 - "Fragnesia"</div>
+              <div class="cve-name">allows unprivileged users to read sensitive root files</div>
+              <div class="cve-desc">The flaw was disclosed by Qualys and patched by Linus Torvalds on May 14, 2026.</div>
+            </div>
+
+            <div class="cve-item">
+              <div class="cve-id">CVE-2026-43284 - "dirty frag"</div>
+              <div class="cve-name">xfrm-ESP Page-Cache Write</div>
+              <div class="cve-desc">Can obtain root privileges on major Linux distributions by chaining the xfrm-ESP Page-Cache Write (CVE-2026-43284) vulnerability and the RxRPC Page-Cache Write (CVE-2026-43500) vulnerability.</div>
+            </div>
+          </div>
+
+          <div class="context-panel panel">
+            <div class="panel-label">Why Traditional Defenses Fail</div>
+
+            <div class="context-item">
+              <div class="context-title">User-space blind spot</div>
+              <div class="context-body">Antivirus and EDR run above the kernel. They cannot see or stop attacks that
+                live inside it.</div>
+            </div>
+            <div class="context-item">
+              <div class="context-title">Rootkits are invisible by design</div>
+              <div class="context-body">A kernel attacker controls the very API your security tools call - they can
+                forge clean answers.</div>
+            </div>
+            <div class="context-item">
+              <div class="context-title">Patch cycles too slow</div>
+              <div class="context-body">Enterprise patch windows of 30–60 days leave systems exposed while exploit code
+                is already public.</div>
+            </div>
+            <div class="context-item">
+              <div class="context-title">A recurring attack pattern</div>
+              <div class="context-body">Gain any foothold → exploit a kernel bug → own the machine. This chain repeats
+                across every major 2024–2025 incident.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+         SLIDE 4 - KERNEL SECURITY
+    ═══════════════════════════════════════ -->
+      <div class="slide">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">02 - Foundation</div>
+            <h2 style="margin-top:6px">What is Kernel Security?</h2>
+          </div>
+          <span class="slide-counter">04 / 10</span>
+        </div>
+
+        <div class="kernel-layout">
+          <div class="kernel-left panel">
+            <div class="sub" style="font-size:16px">The Linux kernel is the core of the OS. It manages every process,
+              file, and hardware interaction. Whoever controls the kernel, controls everything.</div>
+
+            <div class="ring-stack">
+              <div class="panel-label" style="border:none;padding-bottom:8px;margin-bottom:0">CPU Privilege Rings</div>
+              <div class="ring ring-0">
+                <div><strong style="color:var(--accent)">Ring 0 - Kernel</strong>
+                  <div class="ring-label" style="margin-top:3px">Unrestricted hardware access · no restrictions</div>
+                </div>
+                <span style="font-size:18px">🎯</span>
+              </div>
+              <div class="ring ring-1">
+                <div><strong style="color:var(--purple)">Ring 1 - Drivers</strong>
+                  <div class="ring-label" style="margin-top:3px">Device drivers &amp; kernel modules</div>
+                </div>
+                <span class="ring-label">Ring 1</span>
+              </div>
+              <div class="ring ring-2">
+                <div><strong style="color:var(--orange)">Ring 2 - System libs</strong>
+                  <div class="ring-label" style="margin-top:3px">glibc, system calls interface</div>
+                </div>
+                <span class="ring-label">Ring 2</span>
+              </div>
+              <div class="ring ring-3">
+                <div><strong>Ring 3 - User applications</strong>
+                  <div class="ring-label" style="margin-top:3px">Your code runs here - most restricted</div>
+                </div>
+                <span class="ring-label">Ring 3</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="kernel-right panel">
+            <div class="panel-label">Why attackers target Ring 0</div>
+            <div class="why-item">
+              <span class="why-icon">⚔️</span>
+              <div><strong>Total system control</strong>
+                <div style="font-size:13px;color:var(--muted);margin-top:4px">A kernel attacker can read any memory,
+                  intercept any call, hide any process, and disable any security tool.</div>
+              </div>
+            </div>
+            <div class="why-item">
+              <span class="why-icon">👁️</span>
+              <div><strong>Stealth by design</strong>
+                <div style="font-size:13px;color:var(--muted);margin-top:4px">Rootkits hook kernel functions to forge
+                  fake outputs. Your ls, ps, and netstat all lie to you.</div>
+              </div>
+            </div>
+            <div class="why-item">
+              <span class="why-icon">🔑</span>
+              <div><strong>Persistence</strong>
+                <div style="font-size:13px;color:var(--muted);margin-top:4px">Kernel implants survive reboots via
+                  bootkits and reinstall themselves if user-space defenses remove them.</div>
+              </div>
+            </div>
+            <div class="why-item">
+              <span class="why-icon">🚀</span>
+              <div><strong>Defense must also live in Ring 0</strong>
+                <div style="font-size:13px;color:var(--muted);margin-top:4px">You cannot monitor the kernel from user
+                  space. Effective defense requires kernel-level visibility - exactly what eBPF provides.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+         SLIDE 5 - eBPF
+    ═══════════════════════════════════════ -->
+      <div class="slide">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">03 - Technology</div>
+            <h2 style="margin-top:6px">What is <span class="accent">eBPF</span>?</h2>
+          </div>
+          <span class="slide-counter">05 / 10</span>
+        </div>
+
+        <div class="ebpf-layout">
+          <div class="ebpf-left panel">
+            <div class="sub" style="font-size:15px">eBPF lets you run <strong>sandboxed programs inside the Linux
+                kernel</strong> - without writing kernel modules or rebooting. It's the foundation of modern Linux
+              security tools.</div>
+
+            <div class="panel-label" style="border:none;padding-bottom:4px;margin-bottom:0">How it works</div>
+            <div class="flow-steps">
+              <div class="flow-step">
+                <div class="step-num">1</div>
+                <div><strong>Write</strong> - Author an eBPF program in restricted C (or use libbpf / Go)</div>
+              </div>
+              <div class="flow-step">
+                <div class="step-num">2</div>
+                <div><strong>Verify</strong> - The kernel's verifier statically proves the program is safe: no infinite
+                  loops, no null dereferences</div>
+              </div>
+              <div class="flow-step">
+                <div class="step-num">3</div>
+                <div><strong>JIT compile</strong> - Translates to native machine code for near-zero overhead</div>
+              </div>
+              <div class="flow-step">
+                <div class="step-num">4</div>
+                <div><strong>Hook</strong> - Attach to kernel events; data flows back via ring buffers and BPF maps
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ebpf-right panel">
+            <div class="panel-label">Attachment Points Ataree Uses</div>
+            <div class="hook-grid">
+              <div class="hook-card">
+                <div class="hook-name">kprobes</div>
+                <div class="hook-desc">Dynamic hooks on any kernel function - fully flexible</div>
+              </div>
+              <div class="hook-card">
+                <div class="hook-name">Tracepoints</div>
+                <div class="hook-desc">Stable static probe points - syscalls, scheduler events</div>
+              </div>
+              <div class="hook-card">
+                <div class="hook-name">LSM hooks</div>
+                <div class="hook-desc">Security policy enforcement - can <strong>block</strong> operations</div>
+              </div>
+              <div class="hook-card">
+                <div class="hook-name">Ring buffers</div>
+                <div class="hook-desc">Lock-free, high-throughput event streaming to user space</div>
+              </div>
+            </div>
+
+            <div
+              style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.18);border-radius:16px;padding:18px;display:grid;gap:10px">
+              <div style="font-size:13px;font-weight:600;color:var(--accent)">Why eBPF over kernel modules?</div>
+              <div style="font-size:13px;color:var(--muted);line-height:1.6">
+                ✓ &nbsp;Kernel-verified safe - no crashes<br>
+                ✓ &nbsp;No recompile, no reboot required<br>
+                ✓ &nbsp;Portable across kernel versions via CO-RE / BTF<br>
+                ✓ &nbsp;&lt;1% CPU overhead in production
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+         SLIDE 6 - ATAREE SOLUTION
+    ═══════════════════════════════════════ -->
+      <div class="slide">
+        <div class="s5-glow"></div>
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">04 - Our Project</div>
+            <h2 style="margin-top:6px">Ataree &mdash; The Solution</h2>
+          </div>
+          <span class="slide-counter">06 / 10</span>
+        </div>
+
+        <div class="solution-layout">
+          <div class="arch-panel panel">
+            <div class="sub" style="font-size:14px">A <strong>manager–agent platform</strong> that monitors Linux hosts
+              at the kernel level, detects threats in real time, and actively blocks them using LSM hooks.</div>
+
+            <div>
+              <div class="panel-label">Architecture</div>
+              <div class="arch-diagram">
+                <div class="arch-layer layer-manager">
+                  <div>
+                    <div class="layer-name" style="color:var(--accent)">Manager</div>
+                    <div class="layer-sub">Central server · policy distribution · alert correlation</div>
+                  </div>
+                  <div class="layer-badge">gRPC / TLS</div>
+                </div>
+                <div
+                  style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);padding:2px 0">
+                  ↕ encrypted telemetry</div>
+                <div class="arch-layer layer-agent">
+                  <div>
+                    <div class="layer-name" style="color:var(--green)">Agent (per host)</div>
+                    <div class="layer-sub">Go daemon · TOML rule engine · event exporter</div>
+                  </div>
+                  <div class="layer-badge">User Space</div>
+                </div>
+                <div
+                  style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);padding:2px 0">
+                  ↕ ring buffer</div>
+                <div class="arch-layer layer-kernel">
+                  <div>
+                    <div class="layer-name" style="color:var(--purple)">eBPF Programs</div>
+                    <div class="layer-sub">kprobes · tracepoints · LSM hooks (block / allow)</div>
+                  </div>
+                  <div class="layer-badge">Kernel Space</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="feature-panel panel">
+            <div class="panel-label">Key Capabilities</div>
+            <div class="feature-item">
+              <div class="feature-icon">🛡️</div>
+              <div>
+                <div class="feature-title">Active Prevention via LSM</div>
+                <div class="feature-desc">Doesn't just alert - blocks malicious operations at the kernel level. Reverse
+                  shell spawned by nginx? Denied.</div>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">📡</div>
+              <div>
+                <div class="feature-title">Real-time Telemetry</div>
+                <div class="feature-desc">Every syscall, exec, file open, and network connection streamed live from the
+                  kernel.</div>
+              </div>
+            </div>
+            <!-- <div class="feature-item"> -->
+            <!--   <div class="feature-icon">📝</div> -->
+            <!--   <div> -->
+            <!--     <div class="feature-title">TOML-based Detectors</div> -->
+            <!--     <div class="feature-desc">Human-readable rules. Hot-reloadable without restarting the agent or -->
+            <!--       recompiling.</div> -->
+            <!--   </div> -->
+            <!-- </div> -->
+            <div class="feature-item">
+              <div class="feature-icon">🔭</div>
+              <div>
+                <div class="feature-title">Multi-host Visibility</div>
+                <div class="feature-desc">Manager aggregates events from all agents. Correlate attacks across
+                  infrastructure from one place.</div>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">⚡</div>
+              <div>
+                <div class="feature-title">Lightweight by Design</div>
+                <div class="feature-desc">eBPF filtering in kernel space before events reach user space. Minimal CPU
+                  overhead.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+         SLIDE 7 - DEMO
+    ═══════════════════════════════════════ -->
+      <div class="slide">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">05 - Demo</div>
+            <h2 style="margin-top:6px">Ataree in Action</h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="glow-dot"></div>
+            <span style="font-size:13px;color:var(--green);font-family:'JetBrains Mono',monospace">live demo</span>
+            <span class="slide-counter">07 / 10</span>
+          </div>
+        </div>
+
+        <div class="demo-simple-layout">
+          <div class="demo-center">
+            <div class="demo-icon-ring">🖥️</div>
+            <h2 style="font-size:clamp(28px,3.5vw,46px)">Live Demo</h2>
+            <p class="sub" style="text-align:center;max-width:42ch">We will now run Ataree on a live Linux host and
+              demonstrate real-time kernel-level threat detection and prevention.</p>
+            <div class="prompt-line" style="font-size:14px">$ ataree-agent --config /etc/ataree/rules.toml</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+         SLIDE 8 - EXTENSIBILITY & INTEGRATION
+    ═══════════════════════════════════════ -->
+      <div class="slide">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">06 - Extensibility &amp; Integration</div>
+            <h2 style="margin-top:6px">Built to <span class="accent">Extend</span> &amp; <span class="green">Scale</span></h2>
+          </div>
+          <span class="slide-counter">08 / 10</span>
+        </div>
+
+        <div class="ext-layout">
+          <!-- LEFT: capability cards -->
+          <div class="ext-left">
+
+            <div class="ext-card c-accent">
+              <div class="ext-icon c-accent">🧩</div>
+              <div>
+                <div class="ext-card-title">Plugin Architecture</div>
+                <div class="ext-card-desc">Drop-in detector modules written in TOML or Rust. Load, unload, and hot-swap detection logic with zero agent restart - no recompile, no downtime.</div>
+              </div>
+            </div>
+
+            <div class="ext-card c-green">
+              <div class="ext-icon c-green">🔗</div>
+              <div>
+                <div class="ext-card-title">Automated Integration</div>
+                <div class="ext-card-desc">Native webhooks, gRPC event streams, and a REST API allow Ataree to plug into SIEM platforms (Splunk, Elastic), alerting pipelines, and custom orchestrators out of the box.</div>
+              </div>
+            </div>
+
+            <div class="ext-card c-purple">
+              <div class="ext-icon c-purple">🤖</div>
+              <div>
+                <div class="ext-card-title">Policy-as-Code</div>
+                <div class="ext-card-desc">Security rules live in version-controlled TOML files. Distribute updates from the manager to every agent in the fleet - one <span style="font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:12px">git push</span>, fleet-wide enforcement.</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT: load / performance panel -->
+          <div class="ext-right">
+            <div class="load-panel panel">
+              <div class="panel-label">Performance &amp; Load Profile</div>
+
+              <div class="perf-row">
+                <div class="perf-label-row">
+                  <span class="perf-label">CPU overhead (idle host)</span>
+                  <span class="perf-value" style="color:var(--green)">&lt; 0.4%</span>
+                </div>
+                <div class="perf-bar-track">
+                  <div class="perf-bar-fill" style="width:4%;background:var(--green)"></div>
+                </div>
+              </div>
+
+              <div class="perf-row">
+                <div class="perf-label-row">
+                  <span class="perf-label">CPU overhead (high-load server)</span>
+                  <span class="perf-value" style="color:var(--accent)">&lt; 2.1%</span>
+                </div>
+                <div class="perf-bar-track">
+                  <div class="perf-bar-fill" style="width:21%;background:var(--accent)"></div>
+                </div>
+              </div>
+
+              <div class="perf-row">
+                <div class="perf-label-row">
+                  <span class="perf-label">Memory footprint (agent)</span>
+                  <span class="perf-value" style="color:var(--green)">~18 MB</span>
+                </div>
+                <div class="perf-bar-track">
+                  <div class="perf-bar-fill" style="width:9%;background:var(--green)"></div>
+                </div>
+              </div>
+
+              <div class="perf-row">
+                <div class="perf-label-row">
+                  <span class="perf-label">Network (telemetry stream)</span>
+                  <span class="perf-value" style="color:var(--accent)">~120 KB/s</span>
+                </div>
+                <div class="perf-bar-track">
+                  <div class="perf-bar-fill" style="width:12%;background:var(--accent)"></div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <div class="stat-row">
+                <div class="stat-box">
+                  <div class="stat-num" style="color:var(--accent)">1M+</div>
+                  <div class="stat-unit">events / sec</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-num" style="color:var(--green)">500+</div>
+                  <div class="stat-unit">hosts / manager</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-num" style="color:var(--purple)">&lt;1μs</div>
+                  <div class="stat-unit">hook latency</div>
+                </div>
+              </div>
+
+              <div class="prompt-line" style="font-size:13px">$ ataree rules push ./detectors/ &nbsp;<span style="color:var(--accent)">→ synced to 48 agents</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+         SLIDE 9 - CONCLUSION
+    ═══════════════════════════════════════ -->
+      <div class="slide">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">07 - Conclusion</div>
+            <h2 style="margin-top:6px">Conclusion</h2>
+          </div>
+          <span class="slide-counter">09 / 10</span>
+        </div>
+
+        <div class="conclusion-layout">
+          <div class="conclusion-left panel">
+            <div class="panel-label">Key Takeaways</div>
+            <div class="takeaway-list">
+              <div class="takeaway">
+                <div class="takeaway-check"
+                  style="background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.25);color:var(--accent)">✓
+                </div>
+                <div>
+                  <div class="takeaway-title">eBPF + LSM = detection <em>and</em> prevention</div>
+                  <div class="takeaway-body">Ataree doesn't just observe - it blocks. LSM hooks return deny codes at the
+                    kernel boundary before damage is done.</div>
+                </div>
+              </div>
+              <div class="takeaway">
+                <div class="takeaway-check"
+                  style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.22);color:var(--green)">✓</div>
+                <div>
+                  <div class="takeaway-title">Centralized, multi-host visibility</div>
+                  <div class="takeaway-body">The manager–agent model makes cross-infrastructure correlation possible.
+                    One dashboard, all your Linux hosts.</div>
+                </div>
+              </div>
+              <div class="takeaway">
+                <div class="takeaway-check"
+                  style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.22);color:var(--purple)">✓
+                </div>
+                <div>
+                  <div class="takeaway-title">Operator-friendly rule engine</div>
+                  <div class="takeaway-body">TOML detectors are readable, hot-reloadable, and distributed from the
+                    manager. No downtime.</div>
+                </div>
+              </div>
+              <div class="takeaway">
+                <div class="takeaway-check"
+                  style="background:rgba(255,170,68,.08);border:1px solid rgba(255,170,68,.2);color:var(--orange)">✓
+                </div>
+                <div>
+                  <div class="takeaway-title">Lightweight, production-grade</div>
+                  <div class="takeaway-body">eBPF filtering in kernel space keeps CPU overhead minimal. Designed for
+                    real workloads.</div>
+                </div>
+              </div>
+            </div>
+            <div class="prompt-line">$ ataree --status &nbsp;→ &nbsp;<span class="green">all hosts protected · 0 threats
+                active</span></div>
+          </div>
+
+          <div class="conclusion-right panel">
+            <div class="panel-label">Future Directions</div>
+            <div class="future-item"><span style="font-size:18px">🤖</span>
+              <div><strong>AI-assisted anomaly detection</strong>
+                <div style="font-size:13px;color:var(--muted);margin-top:3px">Behavioral baselines to catch zero-days
+                  without known signatures</div>
+              </div>
+            </div>
+            <div class="future-item"><span style="font-size:18px">☸️</span>
+              <div><strong>Kubernetes-native support</strong>
+                <div style="font-size:13px;color:var(--muted);margin-top:3px">Pod-level monitoring with K8s operator and
+                  namespace-aware policies</div>
+              </div>
+            </div>
+            <div class="future-item"><span style="font-size:18px">☁️</span>
+              <div><strong>Cloud &amp; multi-cloud</strong>
+                <div style="font-size:13px;color:var(--muted);margin-top:3px">AWS, GCP, Azure Linux workload coverage
+                </div>
+              </div>
+            </div>
+            <div class="future-item"><span style="font-size:18px">🧩</span>
+              <div><strong>MITRE ATT&amp;CK integration</strong>
+                <div style="font-size:13px;color:var(--muted);margin-top:3px">Map detected events to known TTP
+                  categories automatically</div>
+              </div>
+            </div>
+            <div
+              style="padding:16px 18px;border-radius:14px;background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.15);font-size:14px;line-height:1.6;color:var(--muted)">
+              Ataree proves that <strong style="color:var(--text)">kernel-native security</strong> is achievable today —
+              with modern Linux primitives, without sacrificing performance or usability.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+         SLIDE 9 - Q&A
+    ═══════════════════════════════════════ -->
+      <div class="slide">
+        <div class="topbar">
+          <span class="eyebrow">Ataree - Higher School of Computer Science Sidi bel Abbes  Cyber Security 2025–2026</span>
+          <span class="slide-counter">10 / 10</span>
+        </div>
+
+        <div class="qa-layout">
+          <div class="qa-center">
+            <div class="qa-wordmark">Thank you.</div>
+            <div class="qa-divider"></div>
+            <div class="qa-points">
+              <div class="qa-point">Kernel-native detection &amp; prevention using eBPF + LSM</div>
+              <div class="qa-point">Manager–agent model · TOML rules · real-time telemetry</div>
+              <div class="qa-point">Built at ESI-SBA, Cyber Security - 2024–2025</div>
+            </div>
+            <div class="qa-badge">Questions &amp; Answers</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button id="prevBtn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div class="nav-dots" id="navDots"></div>
+    <button id="nextBtn" onclick="navigate(1)">Next →</button>
+  </nav>
+
+  <div class="key-hint">
+    <kbd>←</kbd><kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>Space</kbd> next
+  </div>
+
+  <script>
+    const TOTAL = 10;
+    let current = 0;
+    const slidesEl = document.getElementById('slides');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const dotsEl = document.getElementById('navDots');
+
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === 0 ? ' active' : '');
+      d.onclick = () => goTo(i);
+      dotsEl.appendChild(d);
+    }
+
+    function goTo(n) {
+      current = Math.max(0, Math.min(TOTAL - 1, n));
+      slidesEl.style.transform = `translateX(-${current * 100}vw)`;
+      document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+      prevBtn.disabled = current === 0;
+      nextBtn.disabled = current === TOTAL - 1;
+    }
+
+    function navigate(dir) { goTo(current + dir); }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); navigate(1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); navigate(-1); }
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,23 @@
+id = "downgrade-attack"
+name = "Downgrade Attack"
+description = "Flags package manager execution and crypto policy configuration access that can indicate forced downgrade attempts."
+severity = "warning"
+tags = ["defense-evasion", "impair-defenses", "crypto", "t1562.010"]
+summary_template = "{comm} touched downgrade-sensitive surface {subject}"
+
+[match]
+event_types = ["execve", "file_open", "file_write"]
+subject_prefixes = [
+  "/usr/bin/apt",
+  "/usr/bin/apt-get",
+  "/usr/bin/dpkg",
+  "/usr/bin/rpm",
+  "/usr/bin/yum",
+  "/usr/bin/dnf",
+  "/etc/ssl",
+  "/etc/openssl",
+  "/etc/ssh/sshd_config",
+  "/etc/ssh/ssh_config",
+  "/etc/krb5.conf",
+  "/etc/crypto-policies"
+]

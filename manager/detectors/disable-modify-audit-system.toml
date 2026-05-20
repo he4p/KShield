@@ -1,0 +1,19 @@
+id = "disable-modify-audit-system"
+name = "Disable or Modify Audit System"
+description = "Flags attempts to execute audit tooling or access Linux audit configuration and logs."
+severity = "critical"
+tags = ["defense-evasion", "impair-defenses", "audit", "t1562.012"]
+summary_template = "{comm} touched audit control surface {subject}"
+
+[match]
+event_types = ["execve", "file_open", "file_write"]
+subject_prefixes = [
+  "/sbin/auditctl",
+  "/usr/sbin/auditctl",
+  "/usr/bin/auditctl",
+  "/sbin/auditd",
+  "/usr/sbin/auditd",
+  "/usr/bin/auditd",
+  "/etc/audit",
+  "/var/log/audit"
+]
