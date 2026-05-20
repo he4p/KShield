@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ataree - Login</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: "Outfit", "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.25), transparent 50%),
+                  radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.2), transparent 50%),
+                  radial-gradient(circle at 50% 50%, rgba(244, 63, 94, 0.08), transparent 60%),
+                  linear-gradient(145deg, #020617 0%, #0f172a 100%);
+      background-attachment: fixed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 440px;
+      padding: 24px;
+    }
+
+    .login-card {
+      border: 1px solid rgba(144, 164, 212, 0.15);
+      border-radius: 28px;
+      background: rgba(18, 20, 26, 0.82);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
+      padding: 40px 36px;
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.35);
+      margin-bottom: 16px;
+    }
+
+    .brand-mark svg {
+      width: 28px;
+      height: 28px;
+      color: white;
+    }
+
+    .brand h1 {
+      color: #f8fafc;
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .brand p {
+      color: #94a3b8;
+      font-size: 0.85rem;
+    }
+
+    .error-message {
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .error-message.show {
+      display: flex;
+    }
+
+    .error-message svg {
+      width: 18px;
+      height: 18px;
+      color: #f43f5e;
+      flex-shrink: 0;
+    }
+
+    .error-message span {
+      color: #fca5a5;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    .input-label {
+      display: block;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .input-field {
+      position: relative;
+    }
+
+    .input-field svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: #64748b;
+      pointer-events: none;
+    }
+
+    .input-field input {
+      width: 100%;
+      height: 48px;
+      padding: 0 14px 0 44px;
+      border: 1px solid rgba(144, 164, 212, 0.2);
+      border-radius: 14px;
+      background: rgba(10, 11, 15, 0.6);
+      color: #f8fafc;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .input-field input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    }
+
+    .input-field input::placeholder {
+      color: #475569;
+    }
+
+    .login-button {
+      width: 100%;
+      height: 48px;
+      margin-top: 8px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25);
+    }
+
+    .login-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.35);
+    }
+
+    .login-button:active {
+      transform: translateY(0);
+    }
+
+    .login-button.loading {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .login-button.loading::after {
+      content: "";
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-left: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 28px;
+      color: #475569;
+      font-size: 0.72rem;
+    }
+
+    .footer a {
+      color: #60a5fa;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 480px) {
+      .login-container {
+        padding: 16px;
+      }
+      .login-card {
+        padding: 28px 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3 5 6v6c0 4.7 2.9 7.8 7 9 4.1-1.2 7-4.3 7-9V6l-7-3Z"></path>
+            <path d="m9.5 12 1.8 1.8 3.7-4"></path>
+          </svg>
+        </div>
+        <h1>Ataree</h1>
+        <p>Kernel Threat Detection Control Plane</p>
+      </div>
+
+      <div id="error-message" class="error-message">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span id="error-text">Invalid credentials. Please try again.</span>
+      </div>
+
+      <form id="login-form">
+        <div class="input-group">
+          <label class="input-label">Username</label>
+          <div class="input-field">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21a8 8 0 0 0-16 0"></path>
+              <circle cx="12" cy="8" r="4"></circle>
+            </svg>
+            <input type="text" id="username" placeholder="admin" autocomplete="username">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Password</label>
+          <div class="input-field">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="8" width="16" height="14" rx="2"></rect>
+              <path d="M8 8V6a4 4 0 0 1 8 0v2"></path>
+            </svg>
+            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+          </div>
+        </div>
+
+        <button type="submit" class="login-button" id="login-btn">Sign In</button>
+      </form>
+
+      <div class="footer">
+        <span>🔐 eBPF-LSM IPS Control Plane</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const loginBtn = document.getElementById('login-btn');
+    const errorDiv = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
+
+    function showError(message) {
+        errorText.textContent = message;
+        errorDiv.classList.add('show');
+        setTimeout(() => {
+            errorDiv.classList.remove('show');
+        }, 4000);
+    }
+
+    function hideError() {
+        errorDiv.classList.remove('show');
+    }
+
+    async function login(username, password) {
+        const credentials = btoa(`${username}:${password}`);
+        
+        try {
+            const response = await fetch('/api/v1/metrics/summary', {
+                headers: {
+                    'Authorization': `Basic ${credentials}`
+                }
+            });
+
+            if (response.ok) {
+                localStorage.setItem('auth_credentials', credentials);
+                window.location.href = '/';
+            } else {
+                showError('Invalid username or password');
+            }
+        } catch (err) {
+            showError('Connection error. Please try again.');
+        }
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideError();
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!username || !password) {
+            showError('Please enter both username and password');
+            return;
+        }
+
+        loginBtn.classList.add('loading');
+        loginBtn.textContent = 'Authenticating';
+
+        await login(username, password);
+
+        loginBtn.classList.remove('loading');
+        loginBtn.textContent = 'Sign In';
+    });
+
+    // Only check for saved credentials if we're NOT already on the login page trying to log out?
+    // Remove the auto-redirect code completely
+    usernameInput.focus();
+</script>
+</body>
+</html>

@@ -101,33 +101,75 @@ class Detector:
 
     @classmethod
     def from_toml(cls, path: Path, payload: dict[str, Any]) -> "Detector":
-        match = payload.get("match", {}) if isinstance(payload.get("match"), dict) else {}
+        match = (
+            payload.get("match", {}) if isinstance(payload.get("match"), dict) else {}
+        )
         detector_id = as_str(payload.get("id"), path.stem).strip() or path.stem
         name = as_str(payload.get("name"), detector_id).strip() or detector_id
         description = as_str(payload.get("description"), "").strip()
-        severity = as_str(payload.get("severity"), "warning").strip().lower() or "warning"
+        severity = (
+            as_str(payload.get("severity"), "warning").strip().lower() or "warning"
+        )
         return cls(
             id=detector_id,
             name=name,
             description=description,
             severity=severity,
-            tags=[as_str(v).strip() for v in as_list(payload.get("tags")) if as_str(v).strip()],
-            event_types=[as_str(v).strip().lower() for v in as_list(match.get("event_types")) if as_str(v).strip()],
-            actions=[as_str(v).strip().lower() for v in as_list(match.get("actions")) if as_str(v).strip()],
-            comm_in=[as_str(v).strip().lower() for v in as_list(match.get("comm_in")) if as_str(v).strip()],
-            comm_prefixes=[as_str(v).strip().lower() for v in as_list(match.get("comm_prefixes")) if as_str(v).strip()],
-            subject_prefixes=[as_str(v).strip().lower() for v in as_list(match.get("subject_prefixes")) if as_str(v).strip()],
-            subject_contains=[as_str(v).strip().lower() for v in as_list(match.get("subject_contains")) if as_str(v).strip()],
+            tags=[
+                as_str(v).strip()
+                for v in as_list(payload.get("tags"))
+                if as_str(v).strip()
+            ],
+            event_types=[
+                as_str(v).strip().lower()
+                for v in as_list(match.get("event_types"))
+                if as_str(v).strip()
+            ],
+            actions=[
+                as_str(v).strip().lower()
+                for v in as_list(match.get("actions"))
+                if as_str(v).strip()
+            ],
+            comm_in=[
+                as_str(v).strip().lower()
+                for v in as_list(match.get("comm_in"))
+                if as_str(v).strip()
+            ],
+            comm_prefixes=[
+                as_str(v).strip().lower()
+                for v in as_list(match.get("comm_prefixes"))
+                if as_str(v).strip()
+            ],
+            subject_prefixes=[
+                as_str(v).strip().lower()
+                for v in as_list(match.get("subject_prefixes"))
+                if as_str(v).strip()
+            ],
+            subject_contains=[
+                as_str(v).strip().lower()
+                for v in as_list(match.get("subject_contains"))
+                if as_str(v).strip()
+            ],
             dst_ports=[as_int(v) for v in as_list(match.get("dst_ports"))],
-            dst_ips=[as_str(v).strip() for v in as_list(match.get("dst_ips")) if as_str(v).strip()],
+            dst_ips=[
+                as_str(v).strip()
+                for v in as_list(match.get("dst_ips"))
+                if as_str(v).strip()
+            ],
             uids=[as_int(v) for v in as_list(match.get("uids"))],
             arg0_in=[as_int(v) for v in as_list(match.get("arg0_in"))],
             arg1_in=[as_int(v) for v in as_list(match.get("arg1_in"))],
             comm_not_in=[as_str(v).strip().lower() for v in as_list(match.get("comm_not_in")) if as_str(v).strip()],
             subject_not_contains=[as_str(v).strip().lower() for v in as_list(match.get("subject_not_contains")) if as_str(v).strip()],
             threshold_count=max(1, as_int(payload.get("threshold_count"), 1)),
-            threshold_window_secs=max(0, as_int(payload.get("threshold_window_secs"), 0)),
-            group_by=[as_str(v).strip() for v in as_list(payload.get("group_by")) if as_str(v).strip()],
+            threshold_window_secs=max(
+                0, as_int(payload.get("threshold_window_secs"), 0)
+            ),
+            group_by=[
+                as_str(v).strip()
+                for v in as_list(payload.get("group_by"))
+                if as_str(v).strip()
+            ],
             summary_template=as_str(payload.get("summary_template"), "").strip(),
             source_file=path.name,
         )
@@ -149,11 +191,17 @@ class Detector:
             return False
         if self.comm_in and comm not in self.comm_in:
             return False
-        if self.comm_prefixes and not any(comm.startswith(prefix) for prefix in self.comm_prefixes):
+        if self.comm_prefixes and not any(
+            comm.startswith(prefix) for prefix in self.comm_prefixes
+        ):
             return False
-        if self.subject_prefixes and not any(subject.startswith(prefix) for prefix in self.subject_prefixes):
+        if self.subject_prefixes and not any(
+            subject.startswith(prefix) for prefix in self.subject_prefixes
+        ):
             return False
-        if self.subject_contains and not any(fragment in subject for fragment in self.subject_contains):
+        if self.subject_contains and not any(
+            fragment in subject for fragment in self.subject_contains
+        ):
             return False
         if self.dst_ports and dst_port not in self.dst_ports:
             return False
@@ -235,7 +283,9 @@ class Storage:
         self.conn.row_factory = sqlite3.Row
         self.lock = threading.Lock()
         self.detectors = detectors
-        self.correlation_windows: dict[tuple[str, str], deque[datetime]] = defaultdict(deque)
+        self.correlation_windows: dict[tuple[str, str], deque[datetime]] = defaultdict(
+            deque
+        )
         self._init_schema()
 
     def _ensure_column(self, table: str, column: str, definition: str) -> None:
@@ -248,8 +298,7 @@ class Storage:
 
     def _init_schema(self) -> None:
         with self.lock, self.conn:
-            self.conn.executescript(
-                """
+            self.conn.executescript("""
                 CREATE TABLE IF NOT EXISTS agents (
                     id TEXT PRIMARY KEY,
                     hostname TEXT NOT NULL,
@@ -397,24 +446,34 @@ class Storage:
             self._ensure_column("events", "pid_ns", "TEXT NOT NULL DEFAULT ''")
             self._ensure_column("events", "mount_ns", "TEXT NOT NULL DEFAULT ''")
             self._ensure_column("events", "net_ns", "TEXT NOT NULL DEFAULT ''")
-            self._ensure_column("detections", "match_count", "INTEGER NOT NULL DEFAULT 1")
-            self._ensure_column("detections", "correlation_key", "TEXT NOT NULL DEFAULT ''")
+            self._ensure_column(
+                "detections", "match_count", "INTEGER NOT NULL DEFAULT 1"
+            )
+            self._ensure_column(
+                "detections", "correlation_key", "TEXT NOT NULL DEFAULT ''"
+            )
 
-            if self.conn.execute("SELECT COUNT(*) FROM blocked_ipv4_rules").fetchone()[0] == 0:
-                self.conn.execute(
-                    """
+            if (
+                self.conn.execute("SELECT COUNT(*) FROM blocked_ipv4_rules").fetchone()[
+                    0
+                ]
+                == 0
+            ):
+                self.conn.execute("""
                     INSERT OR IGNORE INTO blocked_ipv4_rules(ip, agent_scope, enabled, updated_at)
                     SELECT ip, '', enabled, updated_at FROM blocked_ipv4
-                    """
-                )
+                    """)
 
-            if self.conn.execute("SELECT COUNT(*) FROM blocked_bind_port_rules").fetchone()[0] == 0:
+            if (
                 self.conn.execute(
-                    """
+                    "SELECT COUNT(*) FROM blocked_bind_port_rules"
+                ).fetchone()[0]
+                == 0
+            ):
+                self.conn.execute("""
                     INSERT OR IGNORE INTO blocked_bind_port_rules(port, agent_scope, enabled, updated_at)
                     SELECT port, '', enabled, updated_at FROM blocked_bind_ports
-                    """
-                )
+                    """)
 
     def register_agent(self, payload: dict[str, Any], expected_token: str) -> tuple[str, bool]:
         if expected_token:
@@ -567,16 +626,16 @@ class Storage:
 
     def list_agents(self) -> list[dict[str, Any]]:
         with self.lock:
-            rows = self.conn.execute(
-                """
+            rows = self.conn.execute("""
                 SELECT id, hostname, ip, kernel, version, first_seen, last_seen, status
                 FROM agents
                 ORDER BY last_seen DESC
-                """
-            ).fetchall()
+                """).fetchall()
         return [dict(row) for row in rows]
 
-    def _threshold_state(self, detector: Detector, event: dict[str, Any]) -> tuple[bool, int, str]:
+    def _threshold_state(
+        self, detector: Detector, event: dict[str, Any]
+    ) -> tuple[bool, int, str]:
         if detector.threshold_count <= 1 or detector.threshold_window_secs <= 0:
             return True, 1, ""
 
@@ -663,7 +722,9 @@ class Storage:
                 for detector in loaded_detectors:
                     if not detector.matches(normalized):
                         continue
-                    should_emit, match_count, correlation_key = self._threshold_state(detector, normalized)
+                    should_emit, match_count, correlation_key = self._threshold_state(
+                        detector, normalized
+                    )
                     if not should_emit:
                         continue
                     detection = {
@@ -844,7 +905,9 @@ class Storage:
             "ptrace_deny_count": ptrace_deny_count,
         }
 
-    def list_blocked_ipv4(self, enabled_only: bool = True, agent_scope: str = "") -> list[str]:
+    def list_blocked_ipv4(
+        self, enabled_only: bool = True, agent_scope: str = ""
+    ) -> list[str]:
         scope = as_str(agent_scope).strip()
         query = "SELECT DISTINCT ip FROM blocked_ipv4_rules"
         clauses: list[str] = []
@@ -863,13 +926,11 @@ class Storage:
 
     def list_blocked_ipv4_entries(self) -> list[dict[str, Any]]:
         with self.lock:
-            rows = self.conn.execute(
-                """
+            rows = self.conn.execute("""
                 SELECT ip, agent_scope, enabled, updated_at
                 FROM blocked_ipv4_rules
                 ORDER BY updated_at DESC, ip ASC
-                """
-            ).fetchall()
+                """).fetchall()
         return [
             {
                 "ip": str(row["ip"]),
@@ -900,7 +961,9 @@ class Storage:
                 (ip, scope),
             )
 
-    def list_blocked_bind_ports(self, enabled_only: bool = True, agent_scope: str = "") -> list[int]:
+    def list_blocked_bind_ports(
+        self, enabled_only: bool = True, agent_scope: str = ""
+    ) -> list[int]:
         scope = as_str(agent_scope).strip()
         query = "SELECT DISTINCT port FROM blocked_bind_port_rules"
         clauses: list[str] = []
@@ -919,13 +982,11 @@ class Storage:
 
     def list_blocked_bind_port_entries(self) -> list[dict[str, Any]]:
         with self.lock:
-            rows = self.conn.execute(
-                """
+            rows = self.conn.execute("""
                 SELECT port, agent_scope, enabled, updated_at
                 FROM blocked_bind_port_rules
                 ORDER BY updated_at DESC, port ASC
-                """
-            ).fetchall()
+                """).fetchall()
         return [
             {
                 "port": as_int(row["port"]),
@@ -936,7 +997,9 @@ class Storage:
             for row in rows
         ]
 
-    def set_blocked_bind_port(self, port: int, enabled: bool, agent_scope: str = "") -> None:
+    def set_blocked_bind_port(
+        self, port: int, enabled: bool, agent_scope: str = ""
+    ) -> None:
         scope = as_str(agent_scope).strip()
         with self.lock, self.conn:
             self.conn.execute(
@@ -956,7 +1019,9 @@ class Storage:
                 (port, scope),
             )
 
-    def list_blocked_exec_paths(self, enabled_only: bool = True, agent_scope: str = "") -> list[str]:
+    def list_blocked_exec_paths(
+        self, enabled_only: bool = True, agent_scope: str = ""
+    ) -> list[str]:
         scope = as_str(agent_scope).strip()
         query = "SELECT DISTINCT path FROM blocked_exec_path_rules"
         clauses: list[str] = []
@@ -975,13 +1040,11 @@ class Storage:
 
     def list_blocked_exec_path_entries(self) -> list[dict[str, Any]]:
         with self.lock:
-            rows = self.conn.execute(
-                """
+            rows = self.conn.execute("""
                 SELECT path, agent_scope, enabled, updated_at
                 FROM blocked_exec_path_rules
                 ORDER BY updated_at DESC, path ASC
-                """
-            ).fetchall()
+                """).fetchall()
         return [
             {
                 "path": str(row["path"]),
@@ -992,7 +1055,9 @@ class Storage:
             for row in rows
         ]
 
-    def set_blocked_exec_path(self, path: str, enabled: bool, agent_scope: str = "") -> None:
+    def set_blocked_exec_path(
+        self, path: str, enabled: bool, agent_scope: str = ""
+    ) -> None:
         scope = as_str(agent_scope).strip()
         with self.lock, self.conn:
             self.conn.execute(
@@ -1012,7 +1077,9 @@ class Storage:
                 (path, scope),
             )
 
-    def list_protected_write_targets(self, enabled_only: bool = True, agent_scope: str = "") -> list[str]:
+    def list_protected_write_targets(
+        self, enabled_only: bool = True, agent_scope: str = ""
+    ) -> list[str]:
         scope = as_str(agent_scope).strip()
         query = "SELECT DISTINCT target FROM protected_write_target_rules"
         clauses: list[str] = []
@@ -1031,13 +1098,11 @@ class Storage:
 
     def list_protected_write_target_entries(self) -> list[dict[str, Any]]:
         with self.lock:
-            rows = self.conn.execute(
-                """
+            rows = self.conn.execute("""
                 SELECT target, agent_scope, enabled, updated_at
                 FROM protected_write_target_rules
                 ORDER BY updated_at DESC, target ASC
-                """
-            ).fetchall()
+                """).fetchall()
         return [
             {
                 "target": str(row["target"]),
@@ -1048,7 +1113,9 @@ class Storage:
             for row in rows
         ]
 
-    def set_protected_write_target(self, target: str, enabled: bool, agent_scope: str = "") -> None:
+    def set_protected_write_target(
+        self, target: str, enabled: bool, agent_scope: str = ""
+    ) -> None:
         scope = as_str(agent_scope).strip()
         with self.lock, self.conn:
             self.conn.execute(
@@ -1081,13 +1148,11 @@ class Storage:
 
     def list_ptrace_deny_entries(self) -> list[dict[str, Any]]:
         with self.lock:
-            rows = self.conn.execute(
-                """
+            rows = self.conn.execute("""
                 SELECT agent_scope, enabled, updated_at
                 FROM ptrace_deny_rules
                 ORDER BY updated_at DESC, agent_scope ASC
-                """
-            ).fetchall()
+                """).fetchall()
         return [
             {
                 "agent_id": as_str(row["agent_scope"]),
@@ -1190,25 +1255,43 @@ class AppHandler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
     def _check_auth(self, path: str) -> bool:
-        if path == "/healthz": return True
-        if path in ("/", "/style.css", "/app.js", "/install.sh", "/agent-src.tar.gz"): return True
+        public_paths = {"/healthz", "/login", "/", "/style.css", "/app.js", "/auth.js", "/install.sh", "/agent-src.tar.gz"}
+        if path in public_paths:
+            return True
+        if path == "/api/v1/agents/register":
+            return True
+        if path == "/api/v1/agent-token":
+            return True
+        if path == "/api/v1/events" and self.command == "POST":
+            return True
+        if path == "/api/v1/agent-metrics" and self.command == "POST":
+            return True
+        if path == "/api/v1/agents" and self.command == "DELETE":
+            return True
         if path.startswith("/api/v1/policy/") and not path.startswith("/api/v1/policy/blocked-") and not path.startswith("/api/v1/policy/protected-") and not path.startswith("/api/v1/policy/deny-"):
             return True
-        if path == "/api/v1/agents/register": return True
-        if path == "/api/v1/agent-token": return True
-        if path == "/api/v1/events" and self.command == "POST": return True
-        if path == "/api/v1/agent-metrics" and self.command == "POST": return True
-        if path == "/api/v1/agents" and self.command == "DELETE": return True
-        
         auth = self.headers.get("Authorization")
-        if auth == "Basic YWRtaW46c2VjcmV0":  # admin:secret
-            return True
-        
-        self.send_response(HTTPStatus.UNAUTHORIZED)
-        self.send_header("WWW-Authenticate", 'Basic realm="Ataree"')
-        self.send_header("Content-Type", "application/json")
+        if auth and auth.startswith("Basic "):
+            try:
+                import base64
+
+                decoded = base64.b64decode(auth[6:]).decode("utf-8")
+                username, password = decoded.split(":", 1)
+                if username == "admin" and password == "secret":
+                    return True
+            except Exception:
+                pass
+
+        if path.startswith("/api/"):
+            self.send_response(HTTPStatus.UNAUTHORIZED)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"error": "unauthorized"}')
+            return False
+
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", "/login")
         self.end_headers()
-        self.wfile.write(b'{"error": "unauthorized"}')
         return False
 
     def do_GET(self) -> None:  # noqa: N802
@@ -1221,14 +1304,32 @@ class AppHandler(BaseHTTPRequestHandler):
         if path == "/healthz":
             self._json(HTTPStatus.OK, {"status": "ok", "ts": now_iso()})
             return
+        if path == "/login":
+            self._serve_file(
+                self.app.config.static_dir / "login.html", "text/html; charset=utf-8"
+            )
+            return
         if path == "/":
-            self._serve_file(self.app.config.static_dir / "index.html", "text/html; charset=utf-8")
+            self._serve_file(
+                self.app.config.static_dir / "index.html", "text/html; charset=utf-8"
+            )
             return
         if path == "/style.css":
-            self._serve_file(self.app.config.static_dir / "style.css", "text/css; charset=utf-8")
+            self._serve_file(
+                self.app.config.static_dir / "style.css", "text/css; charset=utf-8"
+            )
             return
         if path == "/app.js":
-            self._serve_file(self.app.config.static_dir / "app.js", "application/javascript; charset=utf-8")
+            self._serve_file(
+                self.app.config.static_dir / "app.js",
+                "application/javascript; charset=utf-8",
+            )
+            return
+        if path == "/auth.js":
+            self._serve_file(
+                self.app.config.static_dir / "auth.js",
+                "application/javascript; charset=utf-8",
+            )
             return
         if path == "/install.sh":
             self._serve_file(self.app.config.static_dir / "install.sh", "text/x-shellscript; charset=utf-8")
@@ -1277,13 +1378,21 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(
                 HTTPStatus.OK,
                 {
-                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
+                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(
+                        enabled_only=True
+                    ),
                     "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
-                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
+                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(
+                        enabled_only=True
+                    ),
                     "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
-                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True),
+                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(
+                        enabled_only=True
+                    ),
                     "blocked_exec_path_items": self.app.storage.list_blocked_exec_path_entries(),
-                    "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True),
+                    "protected_write_targets": self.app.storage.list_protected_write_targets(
+                        enabled_only=True
+                    ),
                     "protected_write_target_items": self.app.storage.list_protected_write_target_entries(),
                     "deny_ptrace": self.app.storage.ptrace_denied(),
                     "ptrace_deny_items": self.app.storage.list_ptrace_deny_entries(),
@@ -1296,10 +1405,18 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(
                 HTTPStatus.OK,
                 {
-                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True, agent_scope=agent_id),
-                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True, agent_scope=agent_id),
-                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True, agent_scope=agent_id),
-                    "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True, agent_scope=agent_id),
+                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(
+                        enabled_only=True, agent_scope=agent_id
+                    ),
+                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(
+                        enabled_only=True, agent_scope=agent_id
+                    ),
+                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(
+                        enabled_only=True, agent_scope=agent_id
+                    ),
+                    "protected_write_targets": self.app.storage.list_protected_write_targets(
+                        enabled_only=True, agent_scope=agent_id
+                    ),
                     "deny_ptrace": self.app.storage.ptrace_denied(agent_scope=agent_id),
                 },
             )
@@ -1324,8 +1441,12 @@ class AppHandler(BaseHTTPRequestHandler):
         if path == "/api/v1/events":
             events: list[dict[str, Any]]
             raw_payload: Any = payload
-            if isinstance(raw_payload, dict) and isinstance(raw_payload.get("events"), list):
-                events = [item for item in raw_payload["events"] if isinstance(item, dict)]
+            if isinstance(raw_payload, dict) and isinstance(
+                raw_payload.get("events"), list
+            ):
+                events = [
+                    item for item in raw_payload["events"] if isinstance(item, dict)
+                ]
             elif isinstance(raw_payload, dict):
                 events = [raw_payload]
             else:
@@ -1345,7 +1466,9 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(
                 HTTPStatus.OK,
                 {
-                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
+                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(
+                        enabled_only=True
+                    ),
                     "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
                 },
             )
@@ -1362,7 +1485,9 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(
                 HTTPStatus.OK,
                 {
-                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
+                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(
+                        enabled_only=True
+                    ),
                     "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
                 },
             )
@@ -1379,7 +1504,9 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(
                 HTTPStatus.OK,
                 {
-                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True),
+                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(
+                        enabled_only=True
+                    ),
                     "blocked_exec_path_items": self.app.storage.list_blocked_exec_path_entries(),
                 },
             )
@@ -1396,7 +1523,9 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(
                 HTTPStatus.OK,
                 {
-                    "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True),
+                    "protected_write_targets": self.app.storage.list_protected_write_targets(
+                        enabled_only=True
+                    ),
                     "protected_write_target_items": self.app.storage.list_protected_write_target_entries(),
                 },
             )
@@ -1446,7 +1575,9 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(
                 HTTPStatus.OK,
                 {
-                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(enabled_only=True),
+                    "blocked_ipv4": self.app.storage.list_blocked_ipv4(
+                        enabled_only=True
+                    ),
                     "blocked_ipv4_items": self.app.storage.list_blocked_ipv4_entries(),
                 },
             )
@@ -1462,7 +1593,9 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(
                 HTTPStatus.OK,
                 {
-                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(enabled_only=True),
+                    "blocked_bind_ports": self.app.storage.list_blocked_bind_ports(
+                        enabled_only=True
+                    ),
                     "blocked_bind_port_items": self.app.storage.list_blocked_bind_port_entries(),
                 },
             )
@@ -1478,7 +1611,9 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(
                 HTTPStatus.OK,
                 {
-                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(enabled_only=True),
+                    "blocked_exec_paths": self.app.storage.list_blocked_exec_paths(
+                        enabled_only=True
+                    ),
                     "blocked_exec_path_items": self.app.storage.list_blocked_exec_path_entries(),
                 },
             )
@@ -1494,7 +1629,9 @@ class AppHandler(BaseHTTPRequestHandler):
             self._json(
                 HTTPStatus.OK,
                 {
-                    "protected_write_targets": self.app.storage.list_protected_write_targets(enabled_only=True),
+                    "protected_write_targets": self.app.storage.list_protected_write_targets(
+                        enabled_only=True
+                    ),
                     "protected_write_target_items": self.app.storage.list_protected_write_target_entries(),
                 },
             )
@@ -1537,18 +1674,26 @@ class AppServer(ThreadingHTTPServer):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Kernel Threat Detection Manager")
     parser.add_argument("--host", default=os.getenv("MANAGER_HOST", "0.0.0.0"))
-    parser.add_argument("--port", type=int, default=as_int(os.getenv("MANAGER_PORT", "8080"), 8080))
+    parser.add_argument(
+        "--port", type=int, default=as_int(os.getenv("MANAGER_PORT", "8080"), 8080)
+    )
     parser.add_argument(
         "--db",
-        default=os.getenv("MANAGER_DB", str(Path(__file__).resolve().parent / "data" / "siem.db")),
+        default=os.getenv(
+            "MANAGER_DB", str(Path(__file__).resolve().parent / "data" / "siem.db")
+        ),
     )
     parser.add_argument(
         "--static-dir",
-        default=os.getenv("MANAGER_STATIC", str(Path(__file__).resolve().parent / "static")),
+        default=os.getenv(
+            "MANAGER_STATIC", str(Path(__file__).resolve().parent / "static")
+        ),
     )
     parser.add_argument(
         "--detector-dir",
-        default=os.getenv("MANAGER_DETECTORS", str(Path(__file__).resolve().parent / "detectors")),
+        default=os.getenv(
+            "MANAGER_DETECTORS", str(Path(__file__).resolve().parent / "detectors")
+        ),
     )
     parser.add_argument(
         "--agent-token",

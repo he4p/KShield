@@ -2,6 +2,7 @@ const state = {
   page: "dashboard",
   search: "",
   rangeHours: 0,
+  severityFilter: "",
   summary: null,
   agents: [],
   events: [],
@@ -140,6 +141,7 @@ function filterDetections(items) {
   const term = state.search.trim().toLowerCase();
   return items.filter(i => {
     if (!inScope(i.ts)) return false;
+    if (state.severityFilter && i.severity !== state.severityFilter) return false;
     if (term && !matchesTerm([i.detector_name, i.severity, i.summary, i.event_type, agentName(i.agent_id)], term)) return false;
     return true;
   });
@@ -609,6 +611,12 @@ document.querySelector("#agents-full-table tbody").addEventListener("click", asy
   if (!confirm(`Remove agent ${agentName(id)}?`)) return;
   try { await fetchJson("/api/v1/agents", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ agent_id: id }) }); toast("Agent removed", "success"); await refresh(); }
   catch (err) { toast(`Error: ${err.message}`, "error"); }
+});
+
+document.getElementById("severity-filter").addEventListener("change", (event) => {
+  state.severityFilter = event.target.value;
+  applyState();
+});
 });
 
 // Agents tabs

@@ -84,6 +84,28 @@
         </label>
         <span class="topbar-chip" id="topbar-events">0 events</span>
         <span class="topbar-chip" id="topbar-agents">0 agents</span>
+
+        <label class="toolbar-field select-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+          </svg>
+          <select id="severity-filter">
+            <option value="">All severities</option>
+            <option value="critical">Critical</option>
+            <option value="warning">Warning</option>
+            <option value="info">Info</option>
+          </select>
+        </label>
+
+        <button id="logout-button" class="profile-button" type="button" aria-label="Logout" title="Logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <path d="m16 17 5-5-5-5"></path>
+            <path d="M21 12H9"></path>
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -384,6 +406,7 @@
     <div class="empty-state"><p class="empty-title"></p><p class="empty-copy"></p></div>
   </template>
 
+  <script src="/auth.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

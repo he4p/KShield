@@ -1,0 +1,28 @@
+id = "disable-modify-firewall"
+name = "Disable or Modify Firewall"
+description = "Flags firewall tooling execution or access to persistent firewall configuration."
+severity = "critical"
+tags = ["defense-evasion", "impair-defenses", "firewall", "t1562.004"]
+summary_template = "{comm} touched firewall control surface {subject}"
+
+[match]
+event_types = ["execve", "file_open", "file_write"]
+subject_prefixes = [
+  "/sbin/iptables",
+  "/usr/sbin/iptables",
+  "/usr/bin/iptables",
+  "/sbin/ip6tables",
+  "/usr/sbin/ip6tables",
+  "/usr/bin/ip6tables",
+  "/sbin/nft",
+  "/usr/sbin/nft",
+  "/usr/bin/nft",
+  "/usr/sbin/ufw",
+  "/usr/bin/ufw",
+  "/usr/sbin/firewall-cmd",
+  "/usr/bin/firewall-cmd",
+  "/etc/iptables",
+  "/etc/ufw",
+  "/etc/firewalld",
+  "/etc/nftables.conf"
+]

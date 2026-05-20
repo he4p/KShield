@@ -91,7 +91,7 @@ Run locally (requires root):
 
 ```bash
 sudo ./agent/target/release/kshield-agent \
-  --manager-url http://127.0.0.1:8080 \
+  --manager-url http://admin:secret@127.0.0.1:8080 \
   --bpf-object ./agent/bpf/kshield.bpf.o
 ```
 
